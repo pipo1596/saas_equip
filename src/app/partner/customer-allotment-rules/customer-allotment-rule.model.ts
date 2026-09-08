@@ -9,7 +9,7 @@ export interface CustomerAllotmentRule {
   dollarAmount: number | null;
   pointsAmount: number | null;
   scopeAllAssortments: 'Y' | 'N';
-  renewalBasis: 'FIXED' | 'HIRE' | 'HIREDAYS';
+  renewalBasis: 'FIXED' | 'HIRE' | 'HIREDAYS' | 'LASTORDER';
   renewalPeriodMonths: 6 | 12 | 24 | 36;
   renewalTime: string;
   hireDaysOffset: number | null;
@@ -38,7 +38,7 @@ export interface CustomerAllotmentRuleForm {
   dollarAmount: number | null;
   pointsAmount: number | null;
   scopeAllAssortments: 'Y' | 'N';
-  renewalBasis: 'FIXED' | 'HIRE' | 'HIREDAYS';
+  renewalBasis: 'FIXED' | 'HIRE' | 'HIREDAYS' | 'LASTORDER';
   renewalPeriodMonths: 6 | 12 | 24 | 36;
   renewalTime: string;
   hireDaysOffset: number | null;
@@ -83,6 +83,7 @@ export interface RuleQuotaLimit {
   categoryName: string | null;
   limitType: 'UNITS' | 'DOLLARS' | 'POINTS';
   limitValue: number;
+  renewalPeriodMonths: 6 | 12 | 24 | 36;
 }
 
 export interface RuleQuotaLimitForm {
@@ -90,6 +91,7 @@ export interface RuleQuotaLimitForm {
   progCatId: number | null;
   limitType: 'UNITS' | 'DOLLARS' | 'POINTS';
   limitValue: number;
+  renewalPeriodMonths: 6 | 12 | 24 | 36;
 }
 
 // Only filled slots are returned/sent — an omitted precedence means the

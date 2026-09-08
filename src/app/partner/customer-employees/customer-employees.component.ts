@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, HostListener, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { PartnerModeService } from '../partner-mode.service';
@@ -40,6 +40,11 @@ export class CustomerEmployeesComponent implements OnInit {
   readonly showDeleteModal = signal(false);
   readonly deleting = signal(false);
   readonly deleteTarget = signal<CustomerEmployee | null>(null);
+
+  // Only one row's "+N more locations" popover open at a time — a floating
+  // panel rather than an inline-expanding row, so it doesn't shift the page
+  // layout underneath it when there are many assigned locations.
+  readonly openLocationsPopoverEmpId = signal<number | null>(null);
 
   readonly region = signal<DataResidencyRegion | null>(null);
 
@@ -271,10 +276,13 @@ export class CustomerEmployeesComponent implements OnInit {
     return this.region() === 'CA' ? 'Canada' : 'USA';
   }
 
-  locationNames(employee: CustomerEmployee): string {
-    return employee.locations.length
-      ? employee.locations.map(l => l.locationName).join('\n')
-      : 'No locations assigned';
+  toggleLocationsPopover(empId: number): void {
+    this.openLocationsPopoverEmpId.update(current => current === empId ? null : empId);
+  }
+
+  @HostListener('document:click')
+  closeLocationsPopover(): void {
+    this.openLocationsPopoverEmpId.set(null);
   }
 
   statusBadgeClass(status: string): string {

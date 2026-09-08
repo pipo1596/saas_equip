@@ -23,7 +23,7 @@ const BLANK_FORM: CustomerAllotmentRuleForm = {
   requireApproval: 'N', allowCcFallback: 'Y',
 };
 
-const BLANK_QUOTA_FORM: RuleQuotaLimitForm = { programId: 0, progCatId: null, limitType: 'UNITS', limitValue: 0 };
+const BLANK_QUOTA_FORM: RuleQuotaLimitForm = { programId: 0, progCatId: null, limitType: 'UNITS', limitValue: 0, renewalPeriodMonths: 12 };
 
 @Component({
   selector: 'app-customer-allotment-rule-editor',
@@ -72,6 +72,10 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   readonly quotaSaving = signal(false);
   readonly quotaError = signal<string | null>(null);
   readonly quotaCategories = signal<{ progCatId: number | null; label: string }[]>([]);
+  // progCatId -> breadcrumb label ("Outerwear > Jackets"), resolved for
+  // every program referenced by the loaded quotas so the list can show full
+  // parent > child paths without needing a per-row category fetch.
+  readonly categoryPathLookup = signal<Record<number, string>>({});
   quotaForm: RuleQuotaLimitForm = { ...BLANK_QUOTA_FORM };
   readonly showDeleteQuotaModal = signal(false);
   readonly deleteQuotaTarget = signal<RuleQuotaLimit | null>(null);
@@ -362,10 +366,34 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     const roleId = this.roleId;
     if (!tpId || !custId || roleId == null) return;
     try {
-      this.quotas.set(await this.service.listQuotas(tpId, custId, roleId, ruleId));
+      const quotas = await this.service.listQuotas(tpId, custId, roleId, ruleId);
+      this.quotas.set(quotas);
+      await this.loadQuotaCategoryPaths(quotas);
     } catch {
       // Non-critical.
     }
+  }
+
+  private async loadQuotaCategoryPaths(quotas: RuleQuotaLimit[]): Promise<void> {
+    const tpId = this.tpId;
+    const custId = this.customerId;
+    if (!tpId || !custId) return;
+    const programIds = Array.from(new Set(quotas.filter(q => q.progCatId != null).map(q => q.programId)));
+    const lookup = { ...this.categoryPathLookup() };
+    await Promise.all(programIds.map(async programId => {
+      try {
+        const tree = await this.programsService.getTree(tpId, custId, programId);
+        this.flattenCategories(tree.categories).forEach(c => { lookup[c.progCatId] = c.label; });
+      } catch {
+        // Leave unresolved — the row falls back to its own categoryName.
+      }
+    }));
+    this.categoryPathLookup.set(lookup);
+  }
+
+  quotaCategoryLabel(quota: RuleQuotaLimit): string {
+    if (quota.progCatId == null) return 'All categories';
+    return this.categoryPathLookup()[quota.progCatId] ?? quota.categoryName ?? 'Category';
   }
 
   // Breadcrumb-style labels ("Outerwear > Jackets") instead of indentation,
@@ -408,6 +436,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     this.quotaForm = {
       programId: quota.programId, progCatId: quota.progCatId,
       limitType: quota.limitType, limitValue: quota.limitValue,
+      renewalPeriodMonths: quota.renewalPeriodMonths,
     };
     this.quotaError.set(null);
     this.onQuotaProgramChange();

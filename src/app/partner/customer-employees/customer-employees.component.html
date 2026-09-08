@@ -129,7 +129,7 @@
     }
   </div>
 
-  <div class="table-responsive">
+  <div>
     <table class="table table-hover align-middle mb-0 table-stacked">
       <thead>
         <tr>
@@ -137,7 +137,7 @@
           <th>Employee #</th>
           <th>Role</th>
           <th>Rank</th>
-          <th class="text-center">Locations</th>
+          <th>Locations</th>
           <th class="text-center">Status</th>
           <th class="text-end">Actions</th>
         </tr>
@@ -171,10 +171,39 @@
               <td class="font-monospace small">{{ employee.empNum || '—' }}</td>
               <td>{{ employee.roleName || '—' }}</td>
               <td>{{ employee.empRank || '—' }}</td>
-              <td class="text-center">
-                <span class="badge bg-light text-dark border"
-                      [title]="locationNames(employee)"
-                      style="cursor:default;">{{ employee.locations.length }}</span>
+              <td>
+                <div class="position-relative">
+                  <div class="d-flex flex-wrap align-items-center gap-1">
+                    @if (employee.locations.length) {
+                      <span class="badge rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1 bg-primary-subtle text-primary border border-primary-subtle">
+                        <i class="bi bi-geo-alt"></i>{{ employee.locations[0].locationName }}
+                      </span>
+                      @if (employee.locations.length > 1) {
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 px-2"
+                                style="font-size:0.75rem;" (click)="$event.stopPropagation(); toggleLocationsPopover(employee.empId)">
+                          <i class="bi" [class.bi-plus-lg]="openLocationsPopoverEmpId() !== employee.empId" [class.bi-dash-lg]="openLocationsPopoverEmpId() === employee.empId"></i>
+                          {{ employee.locations.length - 1 }}
+                        </button>
+                      }
+                    } @else {
+                      <span class="text-muted small">No locations assigned</span>
+                    }
+                  </div>
+
+                  @if (employee.locations.length > 1 && openLocationsPopoverEmpId() === employee.empId) {
+                    <div class="position-absolute bg-white border rounded-3 shadow p-2"
+                         style="top:100%; left:0; z-index:1000; min-width:220px; margin-top:4px;"
+                         (click)="$event.stopPropagation()">
+                      <div class="d-flex flex-column gap-1">
+                        @for (loc of employee.locations.slice(1); track loc.locationId) {
+                          <span class="badge rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1 bg-primary-subtle text-primary border border-primary-subtle">
+                            <i class="bi bi-geo-alt"></i>{{ loc.locationName }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
               </td>
               <td class="text-center">
                 <span [class]="statusBadgeClass(employee.status)">{{ employee.status }}</span>

@@ -384,6 +384,7 @@ export class CustomerRoleDetailComponent implements OnInit {
       case 'FIXED': return 'Fixed date';
       case 'HIRE': return 'Hire date anniversary';
       case 'HIREDAYS': return `Hire date + ${rule.hireDaysOffset ?? 0}d`;
+      case 'LASTORDER': return 'Last order date';
       default: return rule.renewalBasis;
     }
   }

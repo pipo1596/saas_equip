@@ -115,13 +115,13 @@
     @if (needsUnitScope) {
       <div class="card mb-3">
         <div class="card-body">
-          <h6 class="card-title fw-semibold mb-2">Unit Allotment — by Category</h6>
+          <h6 class="card-title fw-semibold mb-2">Unit Allotment — by Assortment</h6>
           @if (scopedCategories.length === 0) {
             <p class="text-muted small mb-0">Add categories to Scope above to set unit quantities.</p>
           } @else {
             <table class="table table-sm align-middle mb-0">
               <thead>
-                <tr><th>Assortment</th><th>Category</th><th style="width:160px;">Unit qty / cycle</th></tr>
+                <tr><th>Uniform Program</th><th>Assortment</th><th style="width:160px;">Unit qty / cycle</th></tr>
               </thead>
               <tbody>
                 @for (c of scopedCategories; track c.progCatId) {
@@ -153,6 +153,7 @@
               <option value="FIXED">Fixed date — all employees</option>
               <option value="HIRE">Hire date anniversary — per employee</option>
               <option value="HIREDAYS">Hire date + days — offset from hire</option>
+              <option value="LASTORDER">Last order date — per employee</option>
             </select>
           </div>
           <div class="col-md-4">
@@ -246,15 +247,16 @@
         } @else {
           <table class="table table-sm align-middle mb-0">
             <thead>
-              <tr><th>Assortment</th><th>Category</th><th>Limit Type</th><th>Limit / Period</th><th class="text-end">Actions</th></tr>
+              <tr><th>Uniform Program</th><th>Assortment</th><th>Limit Type</th><th>Limit</th><th>Renewal</th><th class="text-end">Actions</th></tr>
             </thead>
             <tbody>
               @for (q of quotas(); track q.quotaId) {
                 <tr>
                   <td>{{ q.programName }}</td>
-                  <td>{{ q.categoryName || 'All categories' }}</td>
+                  <td>{{ quotaCategoryLabel(q) }}</td>
                   <td class="text-capitalize">{{ q.limitType.toLowerCase() }}</td>
                   <td>{{ q.limitType === 'DOLLARS' ? ('$' + q.limitValue.toFixed(2)) : q.limitValue }}</td>
+                  <td>{{ q.renewalPeriodMonths }} months</td>
                   <td class="text-end">
                     <button type="button" class="btn btn-sm btn-outline-secondary me-1" (click)="openEditQuotaModal(q)"><i class="bi bi-pencil"></i></button>
                     <button type="button" class="btn btn-sm btn-outline-danger" (click)="openDeleteQuotaModal(q)"><i class="bi bi-trash"></i></button>
@@ -320,11 +322,11 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title">Add Category to Scope</h5>
+          <h5 class="modal-title">Add Assortments to Scope</h5>
           <button class="btn-close" (click)="closeScopeModal()"></button>
         </div>
         <div class="modal-body pt-2">
-          <label class="form-label small fw-semibold text-uppercase text-muted">Assortment</label>
+          <label class="form-label small fw-semibold text-uppercase text-muted">Uniform Program</label>
           <select class="form-select mb-2" [ngModel]="scopeModalProgramId()"
                   (ngModelChange)="scopeModalProgramId.set($event); onScopeModalProgramChange()">
             @for (p of allPrograms(); track p.programId) {
@@ -332,10 +334,10 @@
             }
           </select>
 
-          <label class="form-label small fw-semibold text-uppercase text-muted">Category</label>
+          <label class="form-label small fw-semibold text-uppercase text-muted">Assortment</label>
           <div class="d-flex gap-2">
             <select class="form-select" [ngModel]="scopeModalCategoryId()" (ngModelChange)="scopeModalCategoryId.set($event)">
-              <option [ngValue]="null">— Select a category —</option>
+              <option [ngValue]="null">— Select an assortment —</option>
               @for (c of availableScopeModalCategories(); track c.progCatId) {
                 <option [ngValue]="c.progCatId">{{ c.label }}</option>
               }
@@ -398,7 +400,7 @@
                 }
               </select>
             </div>
-            <div class="col-6">
+            <div class="col-12">
               <label class="form-label fw-medium">Limit Type</label>
               <select class="form-select" [(ngModel)]="quotaForm.limitType" name="quotaLimitType">
                 <option value="UNITS">Max units</option>
@@ -407,8 +409,17 @@
               </select>
             </div>
             <div class="col-6">
-              <label class="form-label fw-medium">Limit / Period</label>
+              <label class="form-label fw-medium">Limit</label>
               <input type="number" min="0" class="form-control" [(ngModel)]="quotaForm.limitValue" name="quotaLimitValue" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Renewal Period</label>
+              <select class="form-select" [ngModel]="quotaForm.renewalPeriodMonths" (ngModelChange)="quotaForm.renewalPeriodMonths = $any($event)" name="quotaRenewalPeriodMonths">
+                <option [ngValue]="6">6 months</option>
+                <option [ngValue]="12">12 months</option>
+                <option [ngValue]="24">24 months</option>
+                <option [ngValue]="36">36 months</option>
+              </select>
             </div>
           </div>
           @if (quotaError()) {
