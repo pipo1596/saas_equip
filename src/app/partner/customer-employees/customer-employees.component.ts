@@ -216,6 +216,13 @@ export class CustomerEmployeesComponent implements OnInit {
     );
   }
 
+  openAllotment(employee: CustomerEmployee): void {
+    this.router.navigate(
+      ['/partner', this.tpId, 'customers', this.customerId, 'employees', employee.empId, 'allotment'],
+      { state: { employee } },
+    );
+  }
+
   openDeleteModal(employee: CustomerEmployee): void {
     this.deleteTarget.set(employee);
     this.showDeleteModal.set(true);

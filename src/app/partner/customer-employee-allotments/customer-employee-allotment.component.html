@@ -1,0 +1,307 @@
+<section class="page-shell">
+
+  <div class="page-shell-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <a class="text-decoration-none small text-muted d-inline-block mb-1"
+         [routerLink]="['/partner', tpId, 'customers', customerId, 'employees']">
+        <i class="bi bi-arrow-left me-1"></i>All employees
+      </a>
+      <h1 class="page-title mb-0">
+        {{ employee()?.firstName }} {{ employee()?.lastName }} — Allotment
+      </h1>
+      <p class="page-subtitle mb-0">{{ employee()?.roleName || '—' }} · for <strong>{{ customerMode.activeCustomer()?.customerName }}</strong></p>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+      Loading…
+    </div>
+  } @else if (loadError()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mt-3" role="alert">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ loadError() }}</span>
+    </div>
+  } @else if (employee()?.roleId == null) {
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-person-badge fs-2 d-block mb-3 opacity-25"></i>
+      No role assigned to this employee — nothing to show.
+    </div>
+  } @else if (activeRules.length === 0) {
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-cash-coin fs-2 d-block mb-3 opacity-25"></i>
+      This employee's role has no active allotment rules.
+    </div>
+  } @else {
+
+    @for (r of activeRules; track r.ruleId) {
+      <div class="card mb-2">
+        <div class="d-flex align-items-center gap-3 px-3 py-3" style="cursor:pointer;" (click)="toggleExpand(r.ruleId)">
+         <div class="d-flex align-items-center gap-4 flex-wrap flex-grow-1">
+
+          <div style="min-width:200px; flex:2 1 200px;">
+            <div class="fw-semibold">{{ r.ruleName }}</div>
+            <div class="text-muted small">{{ ruleSubtitle(r) }}</div>
+          </div>
+
+          <span class="badge rounded-pill" style="background:#EAF3DE; color:#3B6D11; border:1px solid #C4DDA6;">{{ allotTypeLabel(r.allotType) }}</span>
+
+          <div style="min-width:180px; flex:1 1 180px;">
+            @if (hasBalance(r)) {
+              <div class="fw-semibold">{{ primaryLabel(r) }}</div>
+              <div class="progress" style="height:6px;">
+                <div class="progress-bar bg-success" [style.width.%]="progressPct(r)"></div>
+              </div>
+              @if (hasUnits(r) && r.allotType === 'DOLLAR_UNITS') {
+                <div class="text-muted small mt-1">{{ unitsLine(r) }}</div>
+              }
+            } @else {
+              <div class="fw-semibold">{{ totalAmountLabel(r) }}</div>
+              <div class="text-muted small">Not yet active this cycle</div>
+            }
+          </div>
+
+          <div style="min-width:80px;">
+            <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Used</div>
+            <div class="fw-medium">{{ usedLabel(r) }}</div>
+          </div>
+
+          <div style="min-width:80px;">
+            <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Adj.</div>
+            <div class="fw-medium">{{ adjustmentLabel(r) }}</div>
+          </div>
+
+          <div style="min-width:100px;">
+            <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Renews</div>
+            <div class="fw-medium">{{ renewsLabel(r) }}</div>
+          </div>
+
+          <div style="min-width:100px;">
+            <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Expires</div>
+            <div class="fw-medium">{{ expiresLabel(r) }}</div>
+          </div>
+
+         </div>
+
+         <div class="flex-shrink-0 d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" (click)="openAdjustModal(r); $event.stopPropagation()">
+            <i class="bi bi-pencil-square me-1"></i>Adjust
+          </button>
+          <i class="bi" [class.bi-chevron-up]="expandedRuleIds().has(r.ruleId)" [class.bi-chevron-down]="!expandedRuleIds().has(r.ruleId)"></i>
+         </div>
+        </div>
+
+        @if (expandedRuleIds().has(r.ruleId)) {
+          <div class="border-top bg-light px-3 py-3">
+            @if (expandedLoading().has(r.ruleId)) {
+              <div class="text-muted small"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Loading…</div>
+            } @else {
+
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <div class="text-uppercase text-muted mb-1" style="font-size:.65rem; letter-spacing:.04em;">Scope</div>
+                  @if (r.scopeAllAssortments === 'Y') {
+                    <span class="badge rounded-pill" style="background:#EFF4FB; color:#185FA5; border:1px solid #BDD4ED;">All assortments</span>
+                  } @else {
+                    <div class="d-flex flex-wrap gap-1">
+                      @for (c of scopeFor(r.ruleId); track c.progCatId) {
+                        <span class="badge rounded-pill" style="background:#EFF4FB; color:#185FA5; border:1px solid #BDD4ED;">{{ c.categoryName }}</span>
+                      }
+                      @if (scopeFor(r.ruleId).length === 0) {
+                        <span class="text-muted small">No categories</span>
+                      }
+                    </div>
+                  }
+
+                  <div class="mt-3 d-flex flex-column gap-1">
+                    <div class="d-flex justify-content-between" style="max-width:260px;">
+                      <span class="text-muted small">Cycle</span><span class="small fw-medium">{{ r.renewalPeriodMonths }} months</span>
+                    </div>
+                    <div class="d-flex justify-content-between" style="max-width:260px;">
+                      <span class="text-muted small">Renewal basis</span><span class="small fw-medium">{{ renewalBasisLabel(r) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between" style="max-width:260px;">
+                      <span class="text-muted small">Carryover</span><span class="small fw-medium">{{ carryoverLabel(r) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="text-uppercase text-muted mb-1" style="font-size:.65rem; letter-spacing:.04em;">Payment Ledgers</div>
+                  <div class="d-flex flex-column gap-2">
+                    @for (slot of [1, 2, 3]; track slot) {
+                      @if (ledgerAt(r.ruleId, slot); as l) {
+                        <div class="border rounded-3 bg-white px-2 py-1">
+                          <div class="text-muted" style="font-size:.65rem;">L{{ slot }}</div>
+                          <div class="small fw-medium">{{ l.ledgerName }}</div>
+                        </div>
+                      } @else {
+                        <div class="border rounded-3 bg-white px-2 py-1 text-muted">
+                          <div style="font-size:.65rem;">L{{ slot }}</div>
+                          <div class="small">None</div>
+                        </div>
+                      }
+                    }
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <div class="text-uppercase text-muted mb-1" style="font-size:.65rem; letter-spacing:.04em;">Quota Limits</div>
+                  @if (quotasFor(r.ruleId).length === 0) {
+                    <p class="text-muted small mb-0">No quota limits set.</p>
+                  } @else {
+                    <table class="table table-sm mb-0">
+                      <thead>
+                        <tr><th>Assortment</th><th>Category</th><th>Limit</th></tr>
+                      </thead>
+                      <tbody>
+                        @for (q of quotasFor(r.ruleId); track q.quotaId) {
+                          <tr>
+                            <td class="small">{{ q.programName }}</td>
+                            <td class="small">{{ q.categoryName || 'All' }}</td>
+                            <td class="small">{{ q.limitType === 'DOLLARS' ? ('$' + q.limitValue.toFixed(2)) : (q.limitValue + (q.limitType === 'POINTS' ? ' pts' : '')) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+                </div>
+              </div>
+
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Adjustment history -->
+    <h6 class="fw-semibold mt-4 mb-2">Adjustment History</h6>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Allotment</th>
+            <th>Adjustment</th>
+            <th>Amount</th>
+            <th>Reason</th>
+            <th>By</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (adjustmentHistory.length === 0) {
+            <tr><td colspan="6" class="text-center py-4 text-muted">No adjustments on record.</td></tr>
+          } @else {
+            @for (txn of adjustmentHistory; track txn.transactionId) {
+              <tr>
+                <td class="small">{{ formatDate(txn.createdTs.slice(0, 10)) }}</td>
+                <td class="small">{{ ruleNameFor(txn.ruleId) }}</td>
+                <td><span [class]="transactionTypeBadge(txn.txnType)">{{ transactionTypeLabel(txn.txnType) }}</span></td>
+                <td class="small">{{ transactionAmountLabel(txn) }}</td>
+                <td class="small">{{ txn.reason || '—' }}</td>
+                <td class="small">{{ txn.createdBy || '—' }}</td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+  }
+
+</section>
+
+<!-- Manual Adjustment Modal -->
+@if (showAdjustModal()) {
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">Adjust Allotment</h5>
+          <button class="btn-close" (click)="closeAdjustModal()" [disabled]="adjustSaving()"></button>
+        </div>
+        <div class="modal-body pt-2">
+          @if (adjustTarget(); as rule) {
+            <p class="text-muted small mb-3">{{ rule.ruleName }}</p>
+          }
+          <form (ngSubmit)="saveAdjustment()" id="adjustForm" novalidate>
+            <div class="row gy-2 gx-3">
+              @if (adjustTarget(); as rule) {
+                @if (allowsDollarAdjustment(rule) && allowsUnitAdjustment(rule)) {
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold text-uppercase text-muted">Adjust</label>
+                    <select class="form-select" [(ngModel)]="adjustForm.amountType" name="amountType" (ngModelChange)="onAdjustAmountTypeChange()">
+                      <option value="DOLLARS">Dollar balance</option>
+                      <option value="UNITS">Unit balance</option>
+                    </select>
+                  </div>
+                }
+                @if (adjustForm.amountType === 'UNITS') {
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold text-uppercase text-muted">Category</label>
+                    <select class="form-select" [class.is-invalid]="adjustSubmitted() && adjustForm.progCatId == null"
+                            [ngModel]="adjustForm.progCatId" (ngModelChange)="onAdjustCategoryChange($event)" name="progCatId">
+                      <option [ngValue]="null">— Select a category —</option>
+                      @for (c of scopeFor(rule.ruleId); track c.progCatId) {
+                        <option [ngValue]="c.progCatId">{{ c.programName }}: {{ c.categoryName }}</option>
+                      }
+                    </select>
+                    <div class="invalid-feedback">A category is required for a unit adjustment.</div>
+                  </div>
+                }
+              }
+              <div class="col-6">
+                <label class="form-label small fw-semibold text-uppercase text-muted">Direction</label>
+                <select class="form-select" [(ngModel)]="adjustForm.direction" name="direction">
+                  <option value="CREDIT">Credit (add to balance)</option>
+                  <option value="DEBIT">Debit (remove from balance)</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold text-uppercase text-muted">Amount</label>
+                <div class="input-group">
+                  @if (adjustForm.amountType === 'DOLLARS') {
+                    <span class="input-group-text">$</span>
+                  }
+                  <input type="number" [min]="adjustForm.amountType === 'UNITS' ? 1 : 0.01" [step]="adjustForm.amountType === 'UNITS' ? 1 : 0.01"
+                         class="form-control"
+                         [class.is-invalid]="adjustSubmitted() && !(adjustForm.amount > 0)"
+                         [(ngModel)]="adjustForm.amount" name="amount" />
+                  @if (adjustForm.amountType === 'POINTS') {
+                    <span class="input-group-text">pts</span>
+                  }
+                  @if (adjustForm.amountType === 'UNITS') {
+                    <span class="input-group-text">units</span>
+                  }
+                </div>
+                <div class="invalid-feedback">Amount must be greater than 0.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold text-uppercase text-muted">Reason</label>
+                <textarea class="form-control" rows="3" [class.is-invalid]="adjustSubmitted() && !adjustForm.reason.trim()"
+                          [(ngModel)]="adjustForm.reason" name="reason" placeholder="e.g. Damaged jacket replacement"></textarea>
+                <div class="invalid-feedback">A reason is required.</div>
+              </div>
+            </div>
+            @if (adjustError()) {
+              <div class="alert alert-danger d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i><span>{{ adjustError() }}</span>
+              </div>
+            }
+          </form>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary" (click)="closeAdjustModal()" [disabled]="adjustSaving()">Cancel</button>
+          <button type="submit" class="btn btn-dark" form="adjustForm" [disabled]="adjustSaving()">
+            @if (adjustSaving()) {
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving…
+            } @else {
+              <i class="bi bi-check-lg me-1"></i>Save adjustment
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

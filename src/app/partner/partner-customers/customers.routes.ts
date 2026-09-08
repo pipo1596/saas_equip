@@ -8,6 +8,7 @@ import { CustomerAllotmentRuleEditorComponent } from '../customer-allotment-rule
 import { CustomerPaymentLedgersComponent } from '../customer-payment-ledgers/customer-payment-ledgers.component';
 import { CustomerEmployeesComponent } from '../customer-employees/customer-employees.component';
 import { CustomerEmployeeFormComponent } from '../customer-employees/customer-employee-form.component';
+import { CustomerEmployeeAllotmentComponent } from '../customer-employee-allotments/customer-employee-allotment.component';
 import { CustomerLocationsComponent } from '../customer-locations/customer-locations.component';
 import { CustomerLocationFormComponent } from '../customer-locations/customer-location-form.component';
 import { CustomerAddressesComponent } from '../customer-addresses/customer-addresses.component';
@@ -41,6 +42,7 @@ export const CUSTOMERS_ROUTES: Routes = [
   { path: ':customerId/employees', component: CustomerEmployeesComponent },
   { path: ':customerId/employees/new', component: CustomerEmployeeFormComponent },
   { path: ':customerId/employees/:employeeId/edit', component: CustomerEmployeeFormComponent },
+  { path: ':customerId/employees/:employeeId/allotment', component: CustomerEmployeeAllotmentComponent },
   { path: ':customerId/locations', component: CustomerLocationsComponent },
   { path: ':customerId/locations/new', component: CustomerLocationFormComponent },
   { path: ':customerId/locations/:locationId/edit', component: CustomerLocationFormComponent },

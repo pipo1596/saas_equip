@@ -139,16 +139,17 @@
           <th>Rank</th>
           <th>Locations</th>
           <th class="text-center">Status</th>
+          <th class="text-center">Allotment</th>
           <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
         @if (loading()) {
-          <tr><td colspan="7" class="text-center py-4 text-muted">
+          <tr><td colspan="8" class="text-center py-4 text-muted">
             <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Loading…
           </td></tr>
         } @else if (employees().length === 0) {
-          <tr><td colspan="7" class="text-center py-4 text-muted">
+          <tr><td colspan="8" class="text-center py-4 text-muted">
             <i class="bi bi-person-vcard me-2"></i>
             @if (search()) { No employees match your search. } @else { No employees yet. }
           </td></tr>
@@ -207,6 +208,13 @@
               </td>
               <td class="text-center">
                 <span [class]="statusBadgeClass(employee.status)">{{ employee.status }}</span>
+              </td>
+              <td class="text-center">
+                <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="openAllotment(employee)"
+                        [disabled]="employee.roleId == null"
+                        [title]="employee.roleId == null ? 'No role assigned' : 'Allotment'">
+                  <i class="bi bi-cash-coin"></i>
+                </button>
               </td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="editEmployee(employee)" title="Edit"><i class="bi bi-pencil"></i></button>

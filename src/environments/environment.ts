@@ -30,6 +30,7 @@ export const environment = {
     customerShippingMethods: 'APITPCSHP',
     customerAllotmentRules: 'APITPCARL',
     customerPaymentLedgers: 'APITPCLDG',
+    employeeAllotments: 'APITPEABL',
     customerAttachments: 'APITPCATTC',
     customerPriceLists: 'APITPCPRL',
     customerPriceListItems: 'APITPCPRI',
