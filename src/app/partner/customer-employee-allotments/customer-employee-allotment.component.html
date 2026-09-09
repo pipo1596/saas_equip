@@ -196,7 +196,7 @@
               <tr>
                 <td class="small">{{ formatDate(txn.createdTs.slice(0, 10)) }}</td>
                 <td class="small">{{ ruleNameFor(txn.ruleId) }}</td>
-                <td><span [class]="transactionTypeBadge(txn.txnType)">{{ transactionTypeLabel(txn.txnType) }}</span></td>
+                <td><span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span></td>
                 <td class="small">{{ transactionAmountLabel(txn) }}</td>
                 <td class="small">{{ txn.reason || '—' }}</td>
                 <td class="small">{{ txn.createdBy || '—' }}</td>
@@ -253,7 +253,12 @@
               }
               <div class="col-6">
                 <label class="form-label small fw-semibold text-uppercase text-muted">Direction</label>
-                <select class="form-select" [(ngModel)]="adjustForm.direction" name="direction">
+                <select class="form-select" [(ngModel)]="adjustForm.direction" name="direction"
+                        [class.border-success]="adjustForm.direction === 'CREDIT'"
+                        [class.text-success]="adjustForm.direction === 'CREDIT'"
+                        [style.background-color]="adjustForm.direction === 'CREDIT' ? '#EAF3DE' : '#FBECEA'"
+                        [class.border-danger]="adjustForm.direction === 'DEBIT'"
+                        [class.text-danger]="adjustForm.direction === 'DEBIT'">
                   <option value="CREDIT">Credit (add to balance)</option>
                   <option value="DEBIT">Debit (remove from balance)</option>
                 </select>

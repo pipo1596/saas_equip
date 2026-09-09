@@ -446,19 +446,30 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     return this.rules().find(r => r.ruleId === ruleId)?.ruleName ?? `Rule #${ruleId}`;
   }
 
+  // The API returns a signed amount (negative = debit, positive = credit)
+  // despite the DDL's "always a positive magnitude" note — confirmed
+  // against real responses. Direction is derived purely from that sign.
+  private effectiveDirection(txn: EmployeeAllotmentTransaction): 'CREDIT' | 'DEBIT' {
+    return txn.amount < 0 ? 'DEBIT' : 'CREDIT';
+  }
+
   transactionAmountLabel(txn: EmployeeAllotmentTransaction): string {
     const suffix = txn.amountType === 'POINTS' ? ' pts' : txn.amountType === 'UNITS' ? '' : '';
     const prefix = txn.amountType === 'DOLLARS' ? '$' : '';
-    return `${prefix}${txn.amount.toFixed(txn.amountType === 'DOLLARS' ? 2 : 0)}${suffix}`;
+    const sign = this.effectiveDirection(txn) === 'CREDIT' ? '+' : '-';
+    const abs = Math.abs(txn.amount);
+    return `${sign}${prefix}${abs.toFixed(txn.amountType === 'DOLLARS' ? 2 : 0)}${suffix}`;
   }
 
-  transactionTypeBadge(type: string): string {
-    return type === 'CREDIT'
+  transactionTypeBadge(txn: EmployeeAllotmentTransaction): string {
+    return this.effectiveDirection(txn) === 'CREDIT'
       ? 'badge bg-success-subtle text-success border border-success-subtle'
-      : 'badge bg-info-subtle text-info border border-info-subtle';
+      : 'badge bg-danger-subtle text-danger border border-danger-subtle';
   }
 
-  transactionTypeLabel(type: string): string {
-    return type === 'CREDIT' ? 'Credit' : 'Adjustment';
+  transactionTypeLabel(txn: EmployeeAllotmentTransaction): string {
+    const isCredit = this.effectiveDirection(txn) === 'CREDIT';
+    if (txn.txnType === 'ADJUSTMENT') return isCredit ? 'Adjustment (Credit)' : 'Adjustment (Debit)';
+    return isCredit ? 'Credit' : 'Debit';
   }
 }

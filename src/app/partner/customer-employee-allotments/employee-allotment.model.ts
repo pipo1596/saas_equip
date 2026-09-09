@@ -56,6 +56,10 @@ export interface EmployeeAllotmentTransaction {
   ruleId: number;
   txnType: 'DEBIT' | 'CREDIT' | 'ADJUSTMENT' | 'RENEWAL' | 'CARRYOVER' | 'EXPIRE';
   amountType: 'DOLLARS' | 'UNITS' | 'POINTS';
+  // Signed, despite the DDL's "always a positive magnitude" note — the real
+  // API returns a negative amount for a debit-direction entry and positive
+  // for a credit-direction one, confirmed against actual responses. Credit
+  // vs. debit is derived from this sign, not from txnType/a separate field.
   amount: number;
   reason: string | null;
   createdBy: string | null;
