@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -28,7 +28,7 @@ type Step = 'request' | 'reset' | 'done';
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './forgot-password.component.html',
 })
-export class ForgotPasswordComponent {
+export class ForgotPasswordComponent implements OnInit {
   step = signal<Step>('request');
   error = signal<string | null>(null);
   loading = signal(false);
@@ -40,7 +40,7 @@ export class ForgotPasswordComponent {
 
   constructor(
     private fb: FormBuilder,
-    private auth: AuthService,
+    protected auth: AuthService,
     private router: Router,
   ) {
     this.requestForm = this.fb.nonNullable.group({
@@ -51,6 +51,10 @@ export class ForgotPasswordComponent {
       newPassword: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', Validators.required],
     });
+  }
+
+  ngOnInit(): void {
+    this.auth.fetchLoginMode();
   }
 
   get emailControl() {

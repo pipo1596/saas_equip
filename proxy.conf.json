@@ -1,12 +1,12 @@
 {
   "/cgi": {
-    "target": "http://10.32.234.145",
+    "target": "http://10.32.234.147",
     "secure": false,
     "changeOrigin": true,
     "followRedirects": true
   },
   "/photos": {
-    "target": "http://10.32.234.145",
+    "target": "http://10.32.234.147",
     "secure": false,
     "changeOrigin": true
   }

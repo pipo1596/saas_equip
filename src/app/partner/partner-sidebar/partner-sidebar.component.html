@@ -329,12 +329,16 @@
     </nav>
   </div>
 
-  <!-- Exit partner mode -->
-  <div class="partner-sidebar-exit">
-    <button class="partner-exit-btn" type="button" (click)="exitPartnerMode()">
-      <i class="bi bi-arrow-left me-2"></i>
-      Exit Partner Mode
-    </button>
-  </div>
+  <!-- Exit partner mode — not available to a level-2 (Tenant Partner) login,
+       which is permanently locked to its own partner, with no admin area to
+       exit back to. -->
+  @if (!auth.isPartnerLogin()) {
+    <div class="partner-sidebar-exit">
+      <button class="partner-exit-btn" type="button" (click)="exitPartnerMode()">
+        <i class="bi bi-arrow-left me-2"></i>
+        Exit Partner Mode
+      </button>
+    </div>
+  }
 
 </aside>

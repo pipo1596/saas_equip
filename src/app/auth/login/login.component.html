@@ -1,8 +1,14 @@
-<div class="d-grid align-items-center justify-content-center min-vh-100 bg-light p-4">
+<div class="d-grid align-items-center justify-content-center min-vh-100 p-4"
+     [class.bg-light]="!(auth.modeReady() && auth.isPartnerLogin())"
+     [class.auth-bg-partner]="auth.modeReady() && auth.isPartnerLogin()">
   <div class="card auth-card">
-    <div class="card-header bg-dark d-flex justify-content-between align-items-center px-3 py-1">
+    <div class="card-header d-flex justify-content-between align-items-center px-3 py-1"
+         [class.bg-dark]="!(auth.modeReady() && auth.isPartnerLogin())"
+         [class.auth-header-partner]="auth.modeReady() && auth.isPartnerLogin()">
       <img src="/equip-logo.png" alt="eQuip Logo" class="auth-logo" />
-      <h1 class="text-white text-end flex-grow-1 ms-3 mb-0 auth-title">Platform Admin Portal</h1>
+      <h1 class="text-white text-end flex-grow-1 ms-3 mb-0 auth-title">
+        @if (auth.modeReady()) { {{ auth.portalTitle() }} } @else { &nbsp; }
+      </h1>
     </div>
     <div class="card-body">
       <form [formGroup]="form" (ngSubmit)="submit()" class="d-flex flex-column biginputs">
@@ -67,12 +73,26 @@
       </form>
 
       <div class="alert alert-info mb-3" role="alert">
-        <p class="mb-0 small mt-1">Access the platform administration dashboard. Manage all tenants and system configuration.</p>
+        @if (!auth.modeReady()) {
+          <p class="mb-0 small mt-1">&nbsp;</p>
+        } @else if (auth.isPartnerLogin()) {
+          <p class="mb-0 small mt-1">Access your partner portal to manage your storefront, customers, and orders.</p>
+        } @else {
+          <p class="mb-0 small mt-1">Access the platform administration dashboard. Manage all tenants and system configuration.</p>
+        }
       </div>
 
       <div class="border-top pt-3">
-        <p class="mb-2 small"><strong>Need help?</strong> Contact platform support or system administrators.</p>
-        <p class="mb-0 text-muted tiny">eQuip Portal • Platform Administrator Access</p>
+        @if (!auth.modeReady()) {
+          <p class="mb-2 small">&nbsp;</p>
+          <p class="mb-0 text-muted tiny">&nbsp;</p>
+        } @else if (auth.isPartnerLogin()) {
+          <p class="mb-2 small"><strong>Need help?</strong> Contact your eQuip account representative for assistance.</p>
+          <p class="mb-0 text-muted tiny">eQuip Portal • Tenant Partner Access</p>
+        } @else {
+          <p class="mb-2 small"><strong>Need help?</strong> Contact platform support or system administrators.</p>
+          <p class="mb-0 text-muted tiny">eQuip Portal • Platform Administrator Access</p>
+        }
       </div>
     </div>
   </div>

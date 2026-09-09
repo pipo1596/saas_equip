@@ -92,7 +92,7 @@ export class MfaComponent implements AfterViewInit {
     try {
       const { d0, d1, d2, d3, d4, d5 } = this.form.value;
       await this.auth.verifyMfa(`${d0}${d1}${d2}${d3}${d4}${d5}`);
-      await this.router.navigate(['/dashboard']);
+      await this.router.navigate(this.auth.postAuthRoute());
     } catch (error: unknown) {
       this.error.set(error instanceof Error ? error.message : 'Verification failed.');
     } finally {

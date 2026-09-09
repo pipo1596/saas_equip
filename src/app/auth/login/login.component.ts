@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
@@ -21,7 +21,7 @@ type LoginForm = FormGroup<{
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './login.component.html',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   error = signal<string | null>(null);
   loading = signal(false);
   showPassword = signal(false);
@@ -34,13 +34,17 @@ export class LoginComponent {
 
   constructor(
     private fb: FormBuilder,
-    private auth: AuthService,
+    protected auth: AuthService,
     private router: Router
   ) {
     this.form = this.fb.nonNullable.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', Validators.required],
     });
+  }
+
+  ngOnInit(): void {
+    this.auth.fetchLoginMode();
   }
 
   get emailControl() {
@@ -68,7 +72,7 @@ export class LoginComponent {
       if (this.auth.pendingMfa()) {
         await this.router.navigate(['/mfa']);
       } else {
-        await this.router.navigate(['/dashboard']);
+        await this.router.navigate(this.auth.postAuthRoute());
       }
     } catch (error: unknown) {
       this.error.set(

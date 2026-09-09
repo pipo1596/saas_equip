@@ -3,6 +3,7 @@ import { AuthGuard } from './auth/auth.guard';
 import { GuestGuard } from './auth/guest.guard';
 import { ShellComponent } from './shell/shell.component';
 import { partnerModeGuard } from './partner/partner-mode.guard';
+import { partnerTenantGuard } from './partner/partner-tenant.guard';
 import { LoginComponent } from './auth/login/login.component';
 import { MfaComponent } from './auth/mfa/mfa.component';
 import { ForgotPasswordComponent } from './auth/forgot-password/forgot-password.component';
@@ -17,6 +18,7 @@ export const routes: Routes = [
     component: PartnerShellComponent,
     canMatch: [AuthGuard],
     canActivate: [AuthGuard],
+    canActivateChild: [partnerTenantGuard],
     loadChildren: () => import('./partner/partner.routes').then(m => m.PARTNER_ROUTES),
   },
   {

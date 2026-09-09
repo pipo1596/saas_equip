@@ -148,6 +148,17 @@ input[type="radio"].form-check-input {
   font-size: 1.5rem;
 }
 
+/* Tenant Partner (login level 2) theme — visually distinct from the
+   default Platform Admin (level 1) light-gray page / dark header, so
+   it's immediately obvious which portal you're signing into. */
+.auth-bg-partner {
+  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+}
+
+.auth-header-partner {
+  background-color: #5b21b6 !important;
+}
+
 .password-toggle-btn {
   border: 1px solid #cbd5e1;
   border-left: none;

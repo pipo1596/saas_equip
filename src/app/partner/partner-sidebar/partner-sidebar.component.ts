@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, NavigationEnd } from '@angular/ro
 import { filter } from 'rxjs/operators';
 import { PartnerModeService } from '../partner-mode.service';
 import { CustomerModeService } from '../partner-customers/customer-mode.service';
+import { AuthService } from '../../auth/auth.service';
 
 @Component({
   selector: 'app-partner-sidebar',
@@ -13,6 +14,7 @@ import { CustomerModeService } from '../partner-customers/customer-mode.service'
 export class PartnerSidebarComponent {
   protected readonly partnerMode = inject(PartnerModeService);
   protected readonly customerMode = inject(CustomerModeService);
+  protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
   readonly inSettingsMode = signal(this.checkSettingsMode());
