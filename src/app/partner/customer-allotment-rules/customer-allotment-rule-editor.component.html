@@ -292,6 +292,63 @@
       </div>
     </div>
 
+    <!-- Additional Settings -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="card-title fw-semibold mb-2">Additional Settings</h6>
+
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <span>Auto-create allotment record for new employees</span>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [ngModel]="form.autoCreateNewEmp === 'Y'" (ngModelChange)="form.autoCreateNewEmp = $event ? 'Y' : 'N'" name="autoCreateNewEmp" />
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <span>Prorate allotment for employees hired mid-cycle</span>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [ngModel]="form.prorateMidCycle === 'Y'" (ngModelChange)="form.prorateMidCycle = $event ? 'Y' : 'N'" name="prorateMidCycle" />
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <span>Notify employee when new cycle begins</span>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [ngModel]="form.notifyNewCycle === 'Y'" (ngModelChange)="form.notifyNewCycle = $event ? 'Y' : 'N'" name="notifyNewCycle" />
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <span>Notify employee when balance falls below 10%</span>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [ngModel]="form.notifyLowBalance === 'Y'" (ngModelChange)="form.notifyLowBalance = $event ? 'Y' : 'N'" name="notifyLowBalance" />
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <span>Notify employee of carryover amount at cycle end</span>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [ngModel]="form.notifyCarryover === 'Y'" (ngModelChange)="form.notifyCarryover = $event ? 'Y' : 'N'" name="notifyCarryover" />
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
+          <span>Require approval for orders using this allotment</span>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [ngModel]="form.requireApproval === 'Y'" (ngModelChange)="form.requireApproval = $event ? 'Y' : 'N'" name="requireApproval" />
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between py-2">
+          <span>Allow personal credit card if allotment exhausted</span>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [ngModel]="form.allowCcFallback === 'Y'" (ngModelChange)="form.allowCcFallback = $event ? 'Y' : 'N'" name="allowCcFallback" />
+          </div>
+        </div>
+      </div>
+    </div>
+
     @if (saveError()) {
       <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
         <i class="bi bi-exclamation-triangle-fill"></i><span>{{ saveError() }}</span>
