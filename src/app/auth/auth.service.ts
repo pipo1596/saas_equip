@@ -175,6 +175,47 @@ export class AuthService {
     }
   }
 
+  // Pre-authentication actions — deliberately don't touch `state`/persistState,
+  // since there's no authenticated session yet at this point.
+
+  async requestPasswordReset(email: string): Promise<void> {
+    const body = { action: 'FORGOT1', email };
+    const response = await fetch(this.loginEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'include',
+    });
+    const raw = await response.text();
+    const payload = this.parseSimpleResponse(raw);
+    if (!response.ok || payload.success === false) {
+      throw new Error(payload.message ?? 'Unable to send a reset code. Please try again.');
+    }
+  }
+
+  async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+    const body = { action: 'RESET1', email, code, newPassword };
+    const response = await fetch(this.loginEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'include',
+    });
+    const raw = await response.text();
+    const payload = this.parseSimpleResponse(raw);
+    if (!response.ok || payload.success === false) {
+      throw new Error(payload.message ?? 'Unable to reset your password. Please check the code and try again.');
+    }
+  }
+
+  private parseSimpleResponse(raw: string): { success?: boolean; message?: string } {
+    try {
+      return JSON.parse(raw) as { success?: boolean; message?: string };
+    } catch {
+      return { success: false, message: undefined };
+    }
+  }
+
   logout() {
     this.state.set({
       authenticated: false,

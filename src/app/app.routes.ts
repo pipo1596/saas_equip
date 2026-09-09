@@ -5,11 +5,13 @@ import { ShellComponent } from './shell/shell.component';
 import { partnerModeGuard } from './partner/partner-mode.guard';
 import { LoginComponent } from './auth/login/login.component';
 import { MfaComponent } from './auth/mfa/mfa.component';
+import { ForgotPasswordComponent } from './auth/forgot-password/forgot-password.component';
 import { PartnerShellComponent } from './partner/partner-shell/partner-shell.component';
 
 export const routes: Routes = [
   { path: 'login', canMatch: [GuestGuard], canActivate: [GuestGuard], component: LoginComponent },
   { path: 'mfa', canMatch: [GuestGuard], canActivate: [GuestGuard], component: MfaComponent },
+  { path: 'forgot-password', canMatch: [GuestGuard], canActivate: [GuestGuard], component: ForgotPasswordComponent },
   {
     path: 'partner',
     component: PartnerShellComponent,
