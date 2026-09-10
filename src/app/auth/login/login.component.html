@@ -1,7 +1,7 @@
 <div class="d-grid align-items-center justify-content-center min-vh-100 p-4"
      [class.bg-light]="!(auth.modeReady() && auth.isPartnerLogin())"
      [class.auth-bg-partner]="auth.modeReady() && auth.isPartnerLogin()">
-  <div class="card auth-card">
+  <div class="card auth-card" [class.auth-card-partner]="auth.modeReady() && auth.isPartnerLogin()">
     <div class="card-header d-flex justify-content-between align-items-center px-3 py-1"
          [class.bg-dark]="!(auth.modeReady() && auth.isPartnerLogin())"
          [class.auth-header-partner]="auth.modeReady() && auth.isPartnerLogin()">
@@ -62,7 +62,9 @@
           <a routerLink="/forgot-password" class="small">Forgot password?</a>
         </div>
 
-        <button type="submit" class="btn btn-dark w-100 mb-3" [disabled]="loading() || form.invalid">
+        <button type="submit" class="btn w-100 mb-3" [disabled]="loading() || form.invalid"
+                [class.btn-dark]="!(auth.modeReady() && auth.isPartnerLogin())"
+                [class.btn-partner]="auth.modeReady() && auth.isPartnerLogin()">
           {{ loading() ? 'Signing in…' : 'Sign in' }}
         </button>
         @if(error()){

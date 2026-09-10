@@ -152,11 +152,78 @@ input[type="radio"].form-check-input {
    default Platform Admin (level 1) light-gray page / dark header, so
    it's immediately obvious which portal you're signing into. */
 .auth-bg-partner {
-  background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+  background: #f9f8fb;
 }
 
 .auth-header-partner {
-  background-color: #5b21b6 !important;
+  background-color: #6d28d9 !important;
+  padding: 1.5rem 1.75rem !important;
+}
+
+.auth-card-partner {
+  border: none;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -12px rgba(109, 40, 217, 0.22), 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.auth-card-partner .auth-title {
+  font-weight: 700;
+}
+
+.auth-card-partner .card-body {
+  padding: 2rem;
+}
+
+.auth-card-partner .form-control,
+.auth-card-partner .form-select {
+  border-radius: 12px;
+  border-color: #e4e1f2;
+  padding: 0.85rem 1.1rem;
+}
+
+.auth-card-partner .input-group .form-control {
+  border-radius: 12px 0 0 12px;
+}
+
+.auth-card-partner .password-toggle-btn {
+  border-radius: 0 12px 12px 0;
+  border-color: #e4e1f2;
+}
+
+.auth-card-partner .otp-input {
+  border-radius: 12px;
+}
+
+.auth-card-partner a {
+  color: #7c3aed;
+}
+
+.auth-card-partner .alert-info {
+  background-color: #f5f3ff;
+  border: none;
+  border-left: 4px solid #7c3aed;
+  border-radius: 8px;
+  color: #4c1d95;
+}
+
+.btn-partner {
+  background-color: #6d28d9;
+  border-color: #6d28d9;
+  color: #fff;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.btn-partner:hover:not(:disabled) {
+  background-color: #5b21b6;
+  border-color: #5b21b6;
+}
+
+.btn-partner:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .password-toggle-btn {

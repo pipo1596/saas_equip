@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, QueryList, signal, ViewChildren } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, QueryList, signal, ViewChildren } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -10,14 +10,14 @@ import { AuthService } from '../auth.service';
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './mfa.component.html',
 })
-export class MfaComponent implements AfterViewInit {
+export class MfaComponent implements AfterViewInit, OnInit {
   @ViewChildren('codeInput') inputs!: QueryList<ElementRef<HTMLInputElement>>;
 
   error = signal<string | null>(null);
   loading = signal(false);
   form!: FormGroup;
 
-  constructor(private fb: FormBuilder, private auth: AuthService, private router: Router) {
+  constructor(private fb: FormBuilder, protected auth: AuthService, private router: Router) {
     this.form = this.fb.group({
       d0: ['', [Validators.required, Validators.pattern(/^\d$/)]],
       d1: ['', [Validators.required, Validators.pattern(/^\d$/)]],
@@ -30,6 +30,10 @@ export class MfaComponent implements AfterViewInit {
     if (!auth.pendingMfa() && !auth.isAuthenticated()) {
       this.router.navigate(['/login']);
     }
+  }
+
+  ngOnInit(): void {
+    this.auth.fetchLoginMode();
   }
 
   onFocus(event: FocusEvent): void {
