@@ -17,13 +17,6 @@
     </div>
   }
 
-  @if (saveWarning()) {
-    <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ saveWarning() }}</span>
-      <button class="btn-close ms-auto" (click)="saveWarning.set(null)"></button>
-    </div>
-  }
-
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <div class="input-group" style="max-width: 360px;">
       <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
@@ -41,7 +34,6 @@
         <tr>
           <th>Role</th>
           <th class="text-center">Access Level</th>
-          <th class="text-center">Allotment</th>
           <th class="text-center">Employees</th>
           <th class="text-center">Status</th>
           <th class="text-center">Role Settings</th>
@@ -50,11 +42,11 @@
       </thead>
       <tbody>
         @if (loading()) {
-          <tr><td colspan="7" class="text-center py-4 text-muted">
+          <tr><td colspan="6" class="text-center py-4 text-muted">
             <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Loading…
           </td></tr>
         } @else if (roles().length === 0) {
-          <tr><td colspan="7" class="text-center py-4 text-muted">
+          <tr><td colspan="6" class="text-center py-4 text-muted">
             <i class="bi bi-shield-check me-2"></i>
             @if (search()) { No roles match your search. } @else { No roles yet. }
           </td></tr>
@@ -70,7 +62,6 @@
               <td class="text-center">
                 <span [class]="accessLevelBadge(role.accessLevel)">{{ role.accessLevel }}</span>
               </td>
-              <td class="text-center text-muted small">{{ allotmentLabel(role.allotmentType) }}</td>
               <td class="text-center">
                 <span class="badge bg-light text-dark border">{{ employeeCountFor(role.roleId) }}</span>
               </td>
@@ -156,40 +147,12 @@
               </div>
 
               <div class="col-md-6">
-                <label class="form-label small fw-semibold text-uppercase text-muted" for="rf-allotment">Allotment Type</label>
-                <select id="rf-allotment" class="form-select" [(ngModel)]="form.allotmentType" name="allotmentType">
-                  <option value="NONE">None</option>
-                  <option value="DOLLAR">Dollar</option>
-                  <option value="ITEM">Units</option>
-                  <option value="COMBO">Dollar + Units</option>
-                  <option value="POINT">Points</option>
-                </select>
-              </div>
-
-              <div class="col-md-6">
                 <label class="form-label small fw-semibold text-uppercase text-muted" for="rf-status">Status</label>
                 <select id="rf-status" class="form-select" [(ngModel)]="form.isActive" name="isActive">
                   <option value="Y">Active</option>
                   <option value="N">Inactive</option>
                 </select>
               </div>
-
-              @if (editingId() === null) {
-                @if (form.allotmentType === 'DOLLAR' || form.allotmentType === 'COMBO' || form.allotmentType === 'POINT') {
-                  <div class="col-md-6">
-                    <label class="form-label small fw-semibold text-uppercase text-muted" for="rf-quick-amount">
-                      {{ form.allotmentType === 'POINT' ? 'Points' : 'Amount ($)' }}
-                    </label>
-                    <input id="rf-quick-amount" type="number" min="0" step="0.01" class="form-control"
-                           [ngModel]="form.quickAmount" (ngModelChange)="form.quickAmount = $event" name="quickAmount" />
-                    <span class="form-text">Seeds this role's default allotment rule — refine the rest from the Allotment Rules tab after creation.</span>
-                  </div>
-                } @else if (form.allotmentType === 'ITEM') {
-                  <div class="col-12">
-                    <span class="text-muted small">Unit quantities per assortment can be set from this role's Allotment Rules tab after creation.</span>
-                  </div>
-                }
-              }
 
               <div class="col-12">
                 <label class="form-label small fw-semibold text-uppercase text-muted" for="rf-description">Description <span class="fw-normal text-muted">(optional)</span></label>
