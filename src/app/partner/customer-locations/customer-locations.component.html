@@ -56,7 +56,7 @@
           <th>Type</th>
           <th>Address</th>
           <th>Assigned View</th>
-          <th>Employees</th>
+          <th>Assign Employees</th>
           <th class="text-center">Status</th>
           <th class="text-end">Actions</th>
         </tr>
@@ -108,7 +108,7 @@
                   </span>
                 }
               </td>
-              <td>
+              <td class="text-center">
                 <button type="button" class="btn btn-sm btn-light border rounded p-1 px-2" (click)="openAssignModal(loc)" title="Assign employees">
                   <i class="bi bi-people me-1"></i>{{ loc.employeeCount ?? 0 }}
                 </button>

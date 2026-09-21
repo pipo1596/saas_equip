@@ -12,6 +12,7 @@ export interface CustomerShippingMethod {
   minOrderAmount: number | null;
   isDefault: 'Y' | 'N';
   status: 'ACTIVE' | 'INACTIVE';
+  reqApproval: 'Y' | 'N';
   sortOrder: number;
   createdTs: string;
   createdBy: string | null;
@@ -30,4 +31,5 @@ export interface CustomerShippingMethodForm {
   minOrderAmount: number | null;
   isDefault: 'Y' | 'N';
   status: 'ACTIVE' | 'INACTIVE';
+  reqApproval: 'Y' | 'N';
 }

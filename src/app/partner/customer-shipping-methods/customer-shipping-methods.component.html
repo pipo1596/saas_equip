@@ -197,6 +197,13 @@
                 </div>
               </div>
 
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input id="sf-reqApproval" type="checkbox" role="switch" class="form-check-input" [(ngModel)]="form.requireApproval" name="requireApproval" />
+                  <label class="form-check-label" for="sf-reqApproval">Requires approval</label>
+                </div>
+              </div>
+
             </div>
 
             @if (saveError()) {

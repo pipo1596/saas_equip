@@ -1,101 +1,100 @@
 <div class="d-grid align-items-center justify-content-center min-vh-100 p-4"
      [class.bg-light]="!(auth.modeReady() && auth.isPartnerLogin())"
      [class.auth-bg-partner]="auth.modeReady() && auth.isPartnerLogin()">
-  <div class="card auth-card" [class.auth-card-partner]="auth.modeReady() && auth.isPartnerLogin()">
+  @if (!auth.modeReady()) {
+    <div class="spinner-border text-secondary" role="status" style="width: 4.5rem; height: 4.5rem; border-width: 0.4em;">
+      <span class="visually-hidden">Loading…</span>
+    </div>
+  } @else {
+  <div class="card auth-card" [class.auth-card-partner]="auth.isPartnerLogin()">
     <div class="card-header d-flex justify-content-between align-items-center px-3 py-1"
-         [class.bg-dark]="!(auth.modeReady() && auth.isPartnerLogin())"
-         [class.auth-header-partner]="auth.modeReady() && auth.isPartnerLogin()">
+         [class.bg-dark]="!auth.isPartnerLogin()"
+         [class.auth-header-partner]="auth.isPartnerLogin()">
       <img src="/equip-logo.png" alt="eQuip Logo" class="auth-logo" />
-      <h1 class="text-white text-end flex-grow-1 ms-3 mb-0 auth-title">
-        @if (auth.modeReady()) { {{ auth.portalTitle() }} } @else { &nbsp; }
-      </h1>
+      <h1 class="text-white text-end flex-grow-1 ms-3 mb-0 auth-title">{{ auth.portalTitle() }}</h1>
     </div>
     <div class="card-body">
-      <form [formGroup]="form" (ngSubmit)="submit()" class="d-flex flex-column biginputs">
-        <div class="mb-0">
-          <div class="invalid-feedback ps-1" [class.show]="emailControl.invalid && emailControl.touched">
-            @if (emailControl.errors?.['required']) {
-              <span>Email is required.</span>
-            }
-            @if (emailControl.errors?.['email']) {
-              <span>Enter a valid email address.</span>
-            }
-          </div>
-          <input
-            id="email"
-            type="email"
-            formControlName="email"
-            placeholder="Email address"
-            class="form-control form-control-custom"
-            autocomplete="email"
-            [class.is-invalid]="emailControl.invalid && emailControl.touched"
-          />
-        </div>
-
-        <div class="mb-3">
-          <div class="invalid-feedback ps-1" [class.show]="passwordControl.invalid && passwordControl.touched">
-            <span>Password is required.</span>
-          </div>
-          <div class="input-group">
+        <form [formGroup]="form" (ngSubmit)="submit()" class="d-flex flex-column biginputs">
+          <div class="mb-0">
+            <div class="invalid-feedback ps-1" [class.show]="emailControl.invalid && emailControl.touched">
+              @if (emailControl.errors?.['required']) {
+                <span>Email is required.</span>
+              }
+              @if (emailControl.errors?.['email']) {
+                <span>Enter a valid email address.</span>
+              }
+            </div>
             <input
-              id="password"
-              [type]="showPassword() ? 'text' : 'password'"
-              formControlName="password"
-              placeholder="Password"
+              id="email"
+              type="email"
+              formControlName="email"
+              placeholder="Email address"
               class="form-control form-control-custom"
-              autocomplete="current-password"
-              [class.is-invalid]="passwordControl.invalid && passwordControl.touched"
+              autocomplete="email"
+              [class.is-invalid]="emailControl.invalid && emailControl.touched"
             />
-            <button
-              class="btn password-toggle-btn"
-              type="button"
-              (click)="togglePassword()"
-              tabindex="-1"
-              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
-            >
-              <i [class]="showPassword() ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
-            </button>
           </div>
+
+          <div class="mb-3">
+            <div class="invalid-feedback ps-1" [class.show]="passwordControl.invalid && passwordControl.touched">
+              <span>Password is required.</span>
+            </div>
+            <div class="input-group">
+              <input
+                id="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="password"
+                placeholder="Password"
+                class="form-control form-control-custom"
+                autocomplete="current-password"
+                [class.is-invalid]="passwordControl.invalid && passwordControl.touched"
+              />
+              <button
+                class="btn password-toggle-btn"
+                type="button"
+                (click)="togglePassword()"
+                tabindex="-1"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              >
+                <i [class]="showPassword() ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="text-end mb-3">
+            <a routerLink="/forgot-password" class="small">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="btn w-100 mb-3" [disabled]="loading() || form.invalid"
+                  [class.btn-dark]="!auth.isPartnerLogin()"
+                  [class.btn-partner]="auth.isPartnerLogin()">
+            {{ loading() ? 'Signing in…' : 'Sign in' }}
+          </button>
+          @if(error()){
+            <div class="alert alert-danger mb-3" role="alert">
+              {{ error() }}
+            </div>
+          }
+        </form>
+
+        <div class="alert alert-info mb-3" role="alert">
+          @if (auth.isPartnerLogin()) {
+            <p class="mb-0 small mt-1">Access your partner portal to manage your storefront, customers, and orders.</p>
+          } @else {
+            <p class="mb-0 small mt-1">Access the platform administration dashboard. Manage all tenants and system configuration.</p>
+          }
         </div>
 
-        <div class="text-end mb-3">
-          <a routerLink="/forgot-password" class="small">Forgot password?</a>
+        <div class="border-top pt-3">
+          @if (auth.isPartnerLogin()) {
+            <p class="mb-2 small"><strong>Need help?</strong> Contact your eQuip account representative for assistance.</p>
+            <p class="mb-0 text-muted tiny">eQuip Portal • Tenant Partner Access</p>
+          } @else {
+            <p class="mb-2 small"><strong>Need help?</strong> Contact platform support or system administrators.</p>
+            <p class="mb-0 text-muted tiny">eQuip Portal • Platform Administrator Access</p>
+          }
         </div>
-
-        <button type="submit" class="btn w-100 mb-3" [disabled]="loading() || form.invalid"
-                [class.btn-dark]="!(auth.modeReady() && auth.isPartnerLogin())"
-                [class.btn-partner]="auth.modeReady() && auth.isPartnerLogin()">
-          {{ loading() ? 'Signing in…' : 'Sign in' }}
-        </button>
-        @if(error()){
-          <div class="alert alert-danger mb-3" role="alert">
-            {{ error() }}
-          </div>
-        }
-      </form>
-
-      <div class="alert alert-info mb-3" role="alert">
-        @if (!auth.modeReady()) {
-          <p class="mb-0 small mt-1">&nbsp;</p>
-        } @else if (auth.isPartnerLogin()) {
-          <p class="mb-0 small mt-1">Access your partner portal to manage your storefront, customers, and orders.</p>
-        } @else {
-          <p class="mb-0 small mt-1">Access the platform administration dashboard. Manage all tenants and system configuration.</p>
-        }
-      </div>
-
-      <div class="border-top pt-3">
-        @if (!auth.modeReady()) {
-          <p class="mb-2 small">&nbsp;</p>
-          <p class="mb-0 text-muted tiny">&nbsp;</p>
-        } @else if (auth.isPartnerLogin()) {
-          <p class="mb-2 small"><strong>Need help?</strong> Contact your eQuip account representative for assistance.</p>
-          <p class="mb-0 text-muted tiny">eQuip Portal • Tenant Partner Access</p>
-        } @else {
-          <p class="mb-2 small"><strong>Need help?</strong> Contact platform support or system administrators.</p>
-          <p class="mb-0 text-muted tiny">eQuip Portal • Platform Administrator Access</p>
-        }
-      </div>
     </div>
   </div>
+  }
 </div>

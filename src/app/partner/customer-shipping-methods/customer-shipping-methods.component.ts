@@ -17,12 +17,13 @@ interface ShippingMethodForm {
   minOrderAmount: number | null;
   isDefault: boolean;
   active: boolean;
+  requireApproval: boolean;
 }
 
 const BLANK_FORM: ShippingMethodForm = {
   methodName: '', carrier: '', serviceCode: '', estimatedDelivery: '',
   rateType: 'FLAT', flatAmount: null, paidBy: '', minOrderAmount: null,
-  isDefault: false, active: true,
+  isDefault: false, active: true, requireApproval: false,
 };
 
 @Component({
@@ -129,6 +130,7 @@ export class CustomerShippingMethodsComponent implements OnInit {
       minOrderAmount:     method.minOrderAmount,
       isDefault:          method.isDefault === 'Y',
       active:             method.status === 'ACTIVE',
+      requireApproval:    method.reqApproval === 'Y',
     };
     this.saveError.set(null);
     this.submitted.set(false);
@@ -165,6 +167,7 @@ export class CustomerShippingMethodsComponent implements OnInit {
         minOrderAmount:     this.form.minOrderAmount,
         isDefault:          this.form.isDefault ? 'Y' : 'N',
         status:             this.form.active ? 'ACTIVE' : 'INACTIVE',
+        reqApproval:        this.form.requireApproval ? 'Y' : 'N',
       };
       const id = this.editingId();
       if (id === null) {

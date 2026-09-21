@@ -33,7 +33,14 @@ export class TenantPartnersService {
     if (!response.ok || data['success'] === false) {
       throw new Error(String(data['message']) ?? 'Failed to load tenant partner.');
     }
-    return data as unknown as TenantPartner;
+    // Tolerate either a flat payload or one nested under `data`/`tenantPartner`,
+    // since this *GET is exercised far less than *LIST and its exact shape
+    // hasn't been confirmed against the live backend.
+    const partner = (data['tenantPartner'] ?? data['data'] ?? data) as unknown as TenantPartner;
+    if (!partner.logoUrl) {
+      console.warn('[TenantPartnersService.get] no logoUrl in *GET response — raw payload:', data);
+    }
+    return partner;
   }
 
   async create(form: TenantPartnerForm): Promise<void> {
