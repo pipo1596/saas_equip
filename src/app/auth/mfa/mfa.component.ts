@@ -44,10 +44,22 @@ export class MfaComponent implements AfterViewInit, OnInit {
 
   onInput(event: Event, index: number): void {
     const input = event.target as HTMLInputElement;
-    const digit = input.value.replace(/\D/g, '').slice(-1);
-    this.control(index).setValue(digit, { emitEvent: false });
-    input.value = digit;
-    if (digit && index < 5) {
+    const digits = input.value.replace(/\D/g, '');
+
+    // Mobile SMS autofill (Chrome's OTP suggestion) drops the entire code
+    // into whichever box carries autocomplete="one-time-code" (d0) as a
+    // single `input` event rather than a paste — without this branch only
+    // that one box would end up filled. Distribute it across all six boxes
+    // just like a manual paste does.
+    if (digits.length > 1) {
+      input.value = '';
+      this.applyCode(digits);
+      return;
+    }
+
+    this.control(index).setValue(digits, { emitEvent: false });
+    input.value = digits;
+    if (digits && index < 5) {
       this.focusInput(index + 1);
     }
   }
@@ -67,9 +79,13 @@ export class MfaComponent implements AfterViewInit, OnInit {
 
   onPaste(event: ClipboardEvent): void {
     event.preventDefault();
-    const digits = (event.clipboardData?.getData('text') ?? '').replace(/\D/g, '').slice(0, 6).split('');
-    digits.forEach((digit, i) => this.control(i).setValue(digit));
-    this.focusInput(Math.min(digits.length, 5));
+    this.applyCode((event.clipboardData?.getData('text') ?? '').replace(/\D/g, ''));
+  }
+
+  private applyCode(digits: string): void {
+    const chars = digits.slice(0, 6).split('');
+    chars.forEach((digit, i) => this.control(i).setValue(digit));
+    this.focusInput(Math.min(chars.length, 5));
   }
 
   private control(index: number): AbstractControl {

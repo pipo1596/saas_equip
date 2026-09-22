@@ -16,27 +16,27 @@
 
       <form [formGroup]="form" (ngSubmit)="submit()" class="d-flex flex-column biginputs">
         <div class="d-flex justify-content-between gap-2 mb-3">
-          <input #codeInput type="text" inputmode="numeric" maxlength="1" formControlName="d0"
+          <input #codeInput type="text" inputmode="numeric" formControlName="d0"
             class="form-control text-center otp-input" autocomplete="one-time-code"
             (input)="onInput($event, 0)" (keydown)="onKeydown($event, 0)"
             (focus)="onFocus($event)" (paste)="onPaste($event)" />
-          <input #codeInput type="text" inputmode="numeric" maxlength="1" formControlName="d1"
+          <input #codeInput type="text" inputmode="numeric" formControlName="d1"
             class="form-control text-center otp-input"
             (input)="onInput($event, 1)" (keydown)="onKeydown($event, 1)"
             (focus)="onFocus($event)" (paste)="onPaste($event)" />
-          <input #codeInput type="text" inputmode="numeric" maxlength="1" formControlName="d2"
+          <input #codeInput type="text" inputmode="numeric" formControlName="d2"
             class="form-control text-center otp-input"
             (input)="onInput($event, 2)" (keydown)="onKeydown($event, 2)"
             (focus)="onFocus($event)" (paste)="onPaste($event)" />
-          <input #codeInput type="text" inputmode="numeric" maxlength="1" formControlName="d3"
+          <input #codeInput type="text" inputmode="numeric" formControlName="d3"
             class="form-control text-center otp-input"
             (input)="onInput($event, 3)" (keydown)="onKeydown($event, 3)"
             (focus)="onFocus($event)" (paste)="onPaste($event)" />
-          <input #codeInput type="text" inputmode="numeric" maxlength="1" formControlName="d4"
+          <input #codeInput type="text" inputmode="numeric" formControlName="d4"
             class="form-control text-center otp-input"
             (input)="onInput($event, 4)" (keydown)="onKeydown($event, 4)"
             (focus)="onFocus($event)" (paste)="onPaste($event)" />
-          <input #codeInput type="text" inputmode="numeric" maxlength="1" formControlName="d5"
+          <input #codeInput type="text" inputmode="numeric" formControlName="d5"
             class="form-control text-center otp-input"
             (input)="onInput($event, 5)" (keydown)="onKeydown($event, 5)"
             (focus)="onFocus($event)" (paste)="onPaste($event)" />
