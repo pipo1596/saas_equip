@@ -119,16 +119,16 @@
           @if (scopedCategories.length === 0) {
             <p class="text-muted small mb-0">Add categories to Scope above to set unit quantities.</p>
           } @else {
-            <table class="table table-sm align-middle mb-0">
+            <table class="table table-sm align-middle mb-0 table-stacked">
               <thead>
                 <tr><th>Uniform Program</th><th>Assortment</th><th style="width:160px;">Unit qty / cycle</th></tr>
               </thead>
               <tbody>
                 @for (c of scopedCategories; track c.progCatId) {
                   <tr>
-                    <td class="text-muted small">{{ c.programName }}</td>
-                    <td>{{ c.categoryName }}</td>
-                    <td>
+                    <td class="text-muted small" data-label="Uniform Program">{{ c.programName }}</td>
+                    <td data-label="Assortment">{{ c.categoryName }}</td>
+                    <td data-label="Unit qty / cycle">
                       <input type="number" min="0" class="form-control form-control-sm"
                              [value]="unitQtyFor(c.progCatId)"
                              (input)="onUnitQtyChange(c.progCatId, $any($event.target).value)" />
@@ -245,18 +245,18 @@
         } @else if (quotas().length === 0) {
           <p class="text-muted small mb-0">No quota limits set.</p>
         } @else {
-          <table class="table table-sm align-middle mb-0">
+          <table class="table table-sm align-middle mb-0 table-stacked">
             <thead>
               <tr><th>Uniform Program</th><th>Assortment</th><th>Limit Type</th><th>Limit</th><th>Renewal</th><th class="text-end">Actions</th></tr>
             </thead>
             <tbody>
               @for (q of quotas(); track q.quotaId) {
                 <tr>
-                  <td>{{ q.programName }}</td>
-                  <td>{{ quotaCategoryLabel(q) }}</td>
-                  <td class="text-capitalize">{{ q.limitType.toLowerCase() }}</td>
-                  <td>{{ q.limitType === 'DOLLARS' ? ('$' + q.limitValue.toFixed(2)) : q.limitValue }}</td>
-                  <td>{{ q.renewalPeriodMonths }} months</td>
+                  <td data-label="Uniform Program">{{ q.programName }}</td>
+                  <td data-label="Assortment">{{ quotaCategoryLabel(q) }}</td>
+                  <td class="text-capitalize" data-label="Limit Type">{{ q.limitType.toLowerCase() }}</td>
+                  <td data-label="Limit">{{ q.limitType === 'DOLLARS' ? ('$' + q.limitValue.toFixed(2)) : q.limitValue }}</td>
+                  <td data-label="Renewal">{{ q.renewalPeriodMonths }} months</td>
                   <td class="text-end">
                     <button type="button" class="btn btn-sm btn-outline-secondary me-1" (click)="openEditQuotaModal(q)"><i class="bi bi-pencil"></i></button>
                     <button type="button" class="btn btn-sm btn-outline-danger" (click)="openDeleteQuotaModal(q)"><i class="bi bi-trash"></i></button>

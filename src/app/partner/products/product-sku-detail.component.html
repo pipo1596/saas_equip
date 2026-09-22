@@ -371,8 +371,8 @@
             <tbody>
               @for (inv of inventory(); track inv.invId) {
                 <tr>
-                  <td>{{ inv.warehouseName || 'Warehouse #' + inv.warehouseId }}</td>
-                  <td class="text-center">
+                  <td data-label="Warehouse">{{ inv.warehouseName || 'Warehouse #' + inv.warehouseId }}</td>
+                  <td class="text-center" data-label="On Hand">
                     <input
                       type="number"
                       class="form-control form-control-sm text-center"
@@ -382,10 +382,10 @@
                       min="0"
                     />
                   </td>
-                  <td class="text-center text-muted">{{ inv.qtyReserved }}</td>
-                  <td class="text-center fw-medium">{{ inv.qtyAvailable }}</td>
-                  <td class="text-center text-muted">{{ inv.reorderPoint ?? '—' }}</td>
-                  <td class="text-center">
+                  <td class="text-center text-muted" data-label="Reserved">{{ inv.qtyReserved }}</td>
+                  <td class="text-center fw-medium" data-label="Available">{{ inv.qtyAvailable }}</td>
+                  <td class="text-center text-muted" data-label="Reorder Point">{{ inv.reorderPoint ?? '—' }}</td>
+                  <td class="text-center" data-label="Track Inv.">
                     @if (inv.trackInventory === 'Y') { <i class="bi bi-check-circle-fill text-success"></i> }
                     @else { <i class="bi bi-x-circle text-muted"></i> }
                   </td>

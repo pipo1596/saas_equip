@@ -54,17 +54,17 @@
         } @else {
           @for (program of programs(); track program.programId) {
             <tr>
-              <td>
+              <td data-label="Program">
                 <div class="fw-semibold">{{ program.programName }}</div>
                 @if (program.description) {
                   <div class="text-muted small">{{ program.description }}</div>
                 }
               </td>
-              <td class="small">{{ program.priceListName || '—' }}</td>
-              <td class="text-center">
+              <td class="small" data-label="Price List">{{ program.priceListName || '—' }}</td>
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(program.status)">{{ program.status }}</span>
               </td>
-              <td class="small text-muted">{{ formatDate(program.lastSyncedTs) }}</td>
+              <td class="small text-muted" data-label="Last Synced">{{ formatDate(program.lastSyncedTs) }}</td>
               <td class="text-center">
                 <button class="btn btn-sm btn-outline-secondary px-3" (click)="viewTree(program)" title="View Tree"><i class="bi bi-diagram-3"></i></button>
               </td>

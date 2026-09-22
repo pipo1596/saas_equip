@@ -250,7 +250,7 @@
     }
 
     <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0">
+      <table class="table table-hover align-middle mb-0 table-stacked">
         <thead>
           <tr>
             <th>Ledger</th>
@@ -272,10 +272,10 @@
           } @else {
             @for (l of ledgers(); track l.ledgerId) {
               <tr>
-                <td class="fw-semibold">{{ l.ledgerName }}</td>
-                <td class="text-center">{{ ledgerTypeLabel(l.ledgerType) }}</td>
-                <td class="text-center">{{ ledgerAmountLabel(l) }}</td>
-                <td class="text-center"><span [class]="ledgerStatusBadge(l.status)">{{ l.status === 'ACTIVE' ? 'Active' : 'Inactive' }}</span></td>
+                <td class="fw-semibold" data-label="Ledger">{{ l.ledgerName }}</td>
+                <td class="text-center" data-label="Type">{{ ledgerTypeLabel(l.ledgerType) }}</td>
+                <td class="text-center" data-label="Amount">{{ ledgerAmountLabel(l) }}</td>
+                <td class="text-center" data-label="Status"><span [class]="ledgerStatusBadge(l.status)">{{ l.status === 'ACTIVE' ? 'Active' : 'Inactive' }}</span></td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="openEditLedgerModal(l)" title="Edit"><i class="bi bi-pencil"></i></button>
                   <button class="btn btn-sm btn-outline-danger m-1 px-3" (click)="openDeleteLedgerModal(l)" title="Delete"><i class="bi bi-trash"></i></button>

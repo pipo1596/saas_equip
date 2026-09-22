@@ -2,8 +2,8 @@
 
   <div class="page-shell-header d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
-      <h1 class="page-title">Roles</h1>
-      <p class="page-subtitle">Manage roles for <strong>{{ customerMode.activeCustomer()?.customerName }}</strong></p>
+      <h1 class="page-title">Roles and Allotment</h1>
+      <p class="page-subtitle">Manage roles and allotment for <strong>{{ customerMode.activeCustomer()?.customerName }}</strong></p>
     </div>
     <button type="button" class="btn btn-dark" (click)="openAddModal()">
       <i class="bi bi-plus-lg me-2"></i>New Role
@@ -53,19 +53,19 @@
         } @else {
           @for (role of roles(); track role.roleId) {
             <tr>
-              <td>
+              <td data-label="Role">
                 <div class="fw-semibold">{{ role.roleName }}</div>
                 @if (role.description) {
                   <div class="text-muted small">{{ role.description }}</div>
                 }
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Access Level">
                 <span [class]="accessLevelBadge(role.accessLevel)">{{ role.accessLevel }}</span>
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Employees">
                 <span class="badge bg-light text-dark border">{{ employeeCountFor(role.roleId) }}</span>
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(role.isActive)">
                    {{ role.isActive === 'Y' ? 'Active' : 'Inactive' }}
                 </span>

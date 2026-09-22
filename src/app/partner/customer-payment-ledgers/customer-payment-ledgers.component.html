@@ -60,10 +60,10 @@
         } @else {
           @for (l of ledgers(); track l.ledgerId) {
             <tr>
-              <td class="fw-semibold">{{ l.ledgerName }}</td>
-              <td class="text-center"><span [class]="typeBadge(l.ledgerType)">{{ typeLabel(l.ledgerType) }}</span></td>
-              <td class="text-center">{{ amountLabel(l) }}</td>
-              <td class="text-center"><span [class]="statusBadge(l.status)">{{ l.status === 'ACTIVE' ? 'Active' : 'Inactive' }}</span></td>
+              <td class="fw-semibold" data-label="Ledger">{{ l.ledgerName }}</td>
+              <td class="text-center" data-label="Type"><span [class]="typeBadge(l.ledgerType)">{{ typeLabel(l.ledgerType) }}</span></td>
+              <td class="text-center" data-label="Amount">{{ amountLabel(l) }}</td>
+              <td class="text-center" data-label="Status"><span [class]="statusBadge(l.status)">{{ l.status === 'ACTIVE' ? 'Active' : 'Inactive' }}</span></td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="openEditModal(l)" title="Edit"><i class="bi bi-pencil"></i></button>
                 <button class="btn btn-sm btn-outline-danger m-1 px-3" (click)="openDeleteModal(l)" title="Delete"><i class="bi bi-trash"></i></button>

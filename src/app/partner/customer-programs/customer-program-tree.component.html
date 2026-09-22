@@ -78,7 +78,7 @@
           @for (row of rows(); track row.key) {
             @if (row.kind === 'CATEGORY' && row.category; as cat) {
               <tr>
-                <td>
+                <td data-label="Assortment / Product / SKU">
                   <div class="d-flex align-items-center gap-2" [style.paddingLeft.px]="row.level * 24">
                     <button type="button" class="btn btn-sm btn-link text-dark p-0" (click)="toggleExpand(cat.progCatId)">
                       <i class="bi" [class.bi-chevron-right]="!expandedIds().has(cat.progCatId)" [class.bi-chevron-down]="expandedIds().has(cat.progCatId)"></i>
@@ -90,10 +90,10 @@
                     }
                   </div>
                 </td>
-                <td><span class="badge bg-primary-subtle text-primary border border-primary-subtle">Assortment</span></td>
-                <td class="text-end text-muted">—</td>
-                <td class="text-end text-muted">—</td>
-                <td class="text-end text-muted">—</td>
+                <td data-label="Type"><span class="badge bg-primary-subtle text-primary border border-primary-subtle">Assortment</span></td>
+                <td class="text-end text-muted" data-label="Base Price">—</td>
+                <td class="text-end text-muted" data-label="Customer Price">—</td>
+                <td class="text-end text-muted" data-label="Points">—</td>
                 <td class="text-end">
                   <button type="button" class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="openEditCategoryModal(cat)" title="Rename Assortment">
                     <i class="bi bi-pencil"></i>
@@ -120,7 +120,7 @@
               </tr>
             } @else if (row.kind === 'PRODUCT_GROUP' && row.group; as group) {
               <tr>
-                <td>
+                <td data-label="Assortment / Product / SKU">
                   <div class="d-flex align-items-center gap-2" [style.paddingLeft.px]="row.level * 24">
                     <button type="button" class="btn btn-sm btn-link text-dark p-0" (click)="toggleGroupExpand(group.key)">
                       <i class="bi" [class.bi-chevron-right]="!expandedGroupKeys().has(group.key)" [class.bi-chevron-down]="expandedGroupKeys().has(group.key)"></i>
@@ -135,14 +135,15 @@
                     <span class="text-muted small">({{ group.skus.length }} SKU{{ group.skus.length === 1 ? '' : 's' }})</span>
                   </div>
                 </td>
-                <td><span class="badge bg-info-subtle text-info border border-info-subtle">Product</span></td>
-                <td class="text-end font-monospace">{{ groupBasePriceRange(group) }}</td>
+                <td data-label="Type"><span class="badge bg-info-subtle text-info border border-info-subtle">Product</span></td>
+                <td class="text-end font-monospace" data-label="Base Price">{{ groupBasePriceRange(group) }}</td>
                 <td class="text-end font-monospace"
                     [class.text-success]="groupHasDiscount(group)"
-                    [class.fw-semibold]="groupHasDiscount(group)">
+                    [class.fw-semibold]="groupHasDiscount(group)"
+                    data-label="Customer Price">
                   {{ groupCustomerPriceRange(group) }}
                 </td>
-                <td class="text-end font-monospace">{{ groupPointsRange(group) }}</td>
+                <td class="text-end font-monospace" data-label="Points">{{ groupPointsRange(group) }}</td>
                 <td class="text-end">
                   <button type="button" class="btn btn-sm btn-dark m-1 px-3" (click)="openReassignModal(group)" title="Reassign Items to Another Assortment">
                     <i class="bi bi-arrow-left-right"></i>
@@ -154,20 +155,21 @@
               </tr>
             } @else if (row.sku; as sku) {
               <tr>
-                <td>
+                <td data-label="Assortment / Product / SKU">
                   <div class="d-flex align-items-center gap-2" [style.paddingLeft.px]="row.level * 24">
                     <i class="bi bi-upc-scan text-muted"></i>
                     <span class="text-muted small font-monospace">{{ sku.skuCode || ('SKU #' + sku.skuId) }}</span>
                   </div>
                 </td>
-                <td><span class="badge bg-success-subtle text-success border border-success-subtle">SKU</span></td>
-                <td class="text-end font-monospace">{{ sku.basePrice != null ? (sku.basePrice | number:'1.2-2') : '—' }}</td>
+                <td data-label="Type"><span class="badge bg-success-subtle text-success border border-success-subtle">SKU</span></td>
+                <td class="text-end font-monospace" data-label="Base Price">{{ sku.basePrice != null ? (sku.basePrice | number:'1.2-2') : '—' }}</td>
                 <td class="text-end font-monospace"
                     [class.text-success]="sku.customerPrice != null && sku.customerPrice !== sku.basePrice"
-                    [class.fw-semibold]="sku.customerPrice != null && sku.customerPrice !== sku.basePrice">
+                    [class.fw-semibold]="sku.customerPrice != null && sku.customerPrice !== sku.basePrice"
+                    data-label="Customer Price">
                   {{ sku.customerPrice != null ? (sku.customerPrice | number:'1.2-2') : '—' }}
                 </td>
-                <td class="text-end font-monospace">{{ sku.points != null ? (sku.points | number:'1.0-0') : '—' }}</td>
+                <td class="text-end font-monospace" data-label="Points">{{ sku.points != null ? (sku.points | number:'1.0-0') : '—' }}</td>
                 <td class="text-end">
                   <button type="button" class="btn btn-sm btn-outline-danger px-3" (click)="openDeleteSkuModal(sku)" title="Remove SKU">
                     <i class="bi bi-trash"></i>

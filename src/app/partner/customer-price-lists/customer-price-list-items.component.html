@@ -61,15 +61,15 @@
         } @else {
           @for (item of items(); track item.itemId) {
             <tr>
-              <td>
+              <td data-label="SKU">
                 <div class="fw-semibold">{{ item.productTitle || '—' }}</div>
                 <div class="text-muted small font-monospace">{{ item.skuCode || ('SKU #' + item.skuId) }}</div>
               </td>
-              <td class="text-end font-monospace">{{ item.price | currency:(priceList()?.currency || 'USD') }}</td>
-              <td class="text-end font-monospace text-muted">
+              <td class="text-end font-monospace" data-label="Price">{{ item.price | currency:(priceList()?.currency || 'USD') }}</td>
+              <td class="text-end font-monospace text-muted" data-label="Points">
                 {{ item.points != null ? (item.points | number:'1.0-2') : '—' }}
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(item.status)">{{ item.status === 'ACTIVE' ? 'Active' : 'Inactive' }}</span>
               </td>
               <td class="text-end">

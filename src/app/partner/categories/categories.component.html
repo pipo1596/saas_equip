@@ -52,7 +52,7 @@
         } @else {
           @for (cat of flatTree(); track cat.catId) {
             <tr>
-              <td [style.padding-left.px]="16 + cat.level * 20">
+              <td [style.padding-left.px]="16 + cat.level * 20" data-label="Category">
                 <div class="d-flex align-items-center gap-2">
                   @if (hasChildrenSet().has(cat.catId)) {
                     <button type="button" class="btn btn-link p-0 text-muted lh-1" style="width:1rem;"
@@ -68,16 +68,16 @@
                   <span class="fw-medium">{{ cat.catName }}</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Slug">
                 <div class="text-muted small font-monospace">{{ cat.catSlug || '' }}</div>
-                
+
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Active">
                 <span [class]="statusBadge(cat.activeFlag)">
                   <span style="font-size:0.5rem;">&#9679;</span> {{ cat.activeFlag === 'Y' ? 'Active' : 'Inactive' }}
                 </span>
               </td>
-              <td class="text-center text-muted small">{{ cat.sortOrder }}</td>
+              <td class="text-center text-muted small" data-label="Sort">{{ cat.sortOrder }}</td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="editCategory(cat)"><i class="bi bi-pencil"></i></button>
                 <button class="btn btn-sm m-1 px-3"

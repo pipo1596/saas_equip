@@ -95,20 +95,20 @@
         } @else {
           @for (pl of priceLists(); track pl.priceListId) {
             <tr>
-              <td>
+              <td data-label="List">
                 <div class="fw-semibold">{{ pl.listName }}</div>
                 @if (pl.description) {
                   <div class="text-muted small">{{ pl.description }}</div>
                 }
               </td>
-              <td class="font-monospace small">{{ pl.versionCode }}</td>
-              <td class="text-center">{{ pl.currency }}</td>
-              <td class="small">{{ formatDate(pl.effectiveDate) }}</td>
-              <td class="small">{{ formatDate(pl.endDate) }}</td>
-              <td class="text-center">
+              <td class="font-monospace small" data-label="Version">{{ pl.versionCode }}</td>
+              <td class="text-center" data-label="Currency">{{ pl.currency }}</td>
+              <td class="small" data-label="Effective">{{ formatDate(pl.effectiveDate) }}</td>
+              <td class="small" data-label="End Date">{{ formatDate(pl.endDate) }}</td>
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(pl.status)">{{ pl.status }}</span>
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Items">
                 <button class="btn btn-sm btn-outline-secondary px-3" (click)="manageItems(pl)" title="Manage Items">
                   <i class="bi bi-list-ul me-1"></i>{{ pl.itemCount ?? 0 }}
                 </button>

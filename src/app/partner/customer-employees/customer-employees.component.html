@@ -156,7 +156,7 @@
         } @else {
           @for (employee of employees(); track employee.empId) {
             <tr>
-              <td>
+              <td data-label="Name &amp; Email">
                 <div class="d-flex align-items-center gap-3">
                   <span class="d-inline-flex align-items-center justify-content-center rounded-circle text-white fw-bold flex-shrink-0"
                         [style.background]="avatarColor(employee)"
@@ -169,10 +169,10 @@
                   </div>
                 </div>
               </td>
-              <td class="font-monospace small">{{ employee.empNum || '—' }}</td>
-              <td>{{ employee.roleName || '—' }}</td>
-              <td>{{ employee.empRank || '—' }}</td>
-              <td>
+              <td class="font-monospace small" data-label="Employee #">{{ employee.empNum || '—' }}</td>
+              <td data-label="Role">{{ employee.roleName || '—' }}</td>
+              <td data-label="Rank">{{ employee.empRank || '—' }}</td>
+              <td data-label="Locations">
                 <div class="position-relative">
                   <div class="d-flex flex-wrap align-items-center gap-1">
                     @if (employee.locations.length) {
@@ -206,7 +206,7 @@
                   }
                 </div>
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadgeClass(employee.status)">{{ employee.status }}</span>
               </td>
               <td class="text-center">

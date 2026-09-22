@@ -75,7 +75,7 @@
         } @else {
           @for (loc of flatTree(); track loc.locId) {
             <tr>
-              <td [style.padding-left.px]="16 + loc.level * 20">
+              <td [style.padding-left.px]="16 + loc.level * 20" data-label="Location">
                 <div class="d-flex align-items-center gap-2">
                   @if (hasChildrenSet().has(loc.locId)) {
                     <button type="button" class="btn btn-link p-0 text-muted lh-1" style="width:1rem;"
@@ -93,11 +93,11 @@
                   </div>
                 </div>
               </td>
-              <td>
+              <td data-label="Type">
                 <span [class]="typeBadge(loc.locType)">{{ loc.locType }}</span>
               </td>
-              <td class="text-muted small">{{ loc.city || '—' }}, {{ loc.province || '—' }}</td>
-              <td>
+              <td class="text-muted small" data-label="Address">{{ loc.city || '—' }}, {{ loc.province || '—' }}</td>
+              <td data-label="Assigned View">
                 @if (loc.viewName; as viewName) {
                   <span class="badge rounded-pill d-inline-flex align-items-center gap-1 px-3 py-1" style="background:#ede9fe; color:#5b21b6;">
                     <i class="bi bi-eye"></i>{{ viewName }}
@@ -108,12 +108,12 @@
                   </span>
                 }
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Assign Employees">
                 <button type="button" class="btn btn-sm btn-light border rounded p-1 px-2" (click)="openAssignModal(loc)" title="Assign employees">
                   <i class="bi bi-people me-1"></i>{{ loc.employeeCount ?? 0 }}
                 </button>
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(loc.status)">
                    {{ loc.status }}
                 </span>

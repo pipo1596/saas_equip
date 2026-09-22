@@ -32,7 +32,7 @@
     </div>
   } @else {
     <div class="table-responsive mt-3">
-      <table class="table table-hover align-middle mb-0">
+      <table class="table table-hover align-middle mb-0 table-stacked">
         <thead>
           <tr>
             <th>Method</th>
@@ -48,7 +48,7 @@
         <tbody>
           @for (m of methods(); track m.shipMethodId) {
             <tr>
-              <td>
+              <td data-label="Method">
                 <div class="d-flex align-items-center gap-2">
                   <span class="fw-semibold">{{ m.methodName }}</span>
                   @if (m.isDefault === 'Y') {
@@ -59,17 +59,17 @@
                   }
                 </div>
               </td>
-              <td class="small">
+              <td class="small" data-label="Carrier / Service">
                 {{ m.carrier || '—' }}
                 @if (m.serviceCode) {
                   <div class="text-muted" style="font-size:.75rem;">{{ m.serviceCode }}</div>
                 }
               </td>
-              <td class="small text-muted">{{ m.estimatedDelivery || '—' }}</td>
-              <td class="small">{{ rateLabel(m) }}</td>
-              <td class="small">{{ m.paidBy || '—' }}</td>
-              <td class="small">{{ m.minOrderAmount != null ? ('$' + m.minOrderAmount.toFixed(2)) : '—' }}</td>
-              <td class="text-center">
+              <td class="small text-muted" data-label="Estimated Delivery">{{ m.estimatedDelivery || '—' }}</td>
+              <td class="small" data-label="Rate">{{ rateLabel(m) }}</td>
+              <td class="small" data-label="Paid By">{{ m.paidBy || '—' }}</td>
+              <td class="small" data-label="Min. Order">{{ m.minOrderAmount != null ? ('$' + m.minOrderAmount.toFixed(2)) : '—' }}</td>
+              <td class="text-center" data-label="Status">
                 <span class="badge rounded-pill fw-semibold px-2 py-1"
                       [class]="m.status === 'ACTIVE'
                         ? 'bg-success-subtle text-success border border-success-subtle'

@@ -51,7 +51,7 @@
         } @else {
           @for (brand of brands(); track brand.brandId) {
             <tr>
-              <td>
+              <td data-label="Brand">
                 <div class="d-flex align-items-center gap-3">
                   @if (brand.logoUrl) {
                     <img [src]="brand.logoUrl" alt="" class="rounded flex-shrink-0"
@@ -68,12 +68,12 @@
                   </div>
                 </div>
               </td>
-              <td>
+              <td data-label="Website">
                 @if (brand.websiteUrl) {
                   <a [href]="brand.websiteUrl" target="_blank" class="small text-muted">{{ brand.websiteUrl }}</a>
                 } @else { — }
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(brand.status)"> {{ brand.status }}</span>
               </td>
               <td class="text-end">

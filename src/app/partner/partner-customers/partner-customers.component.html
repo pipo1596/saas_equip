@@ -95,15 +95,15 @@
                   }
                 </div>
               </td>
-              <td>
+              <td data-label="Customer">
                 <div class="fw-semibold">{{ customer.customerName }}</div>
                 @if (customer.customerUrl) {
                   <a [href]="fullCustomerUrl(customer.customerUrl)" target="_blank" rel="noopener" class="small text-muted">{{ fullCustomerUrl(customer.customerUrl) }}</a>
                 }
               </td>
-              <td class="font-monospace small">{{ customer.customerNmbr }}</td>
-              <td>{{ customer.customerType || '—' }}</td>
-              <td class="text-center">
+              <td class="font-monospace small" data-label="Customer #">{{ customer.customerNmbr }}</td>
+              <td data-label="Type">{{ customer.customerType || '—' }}</td>
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(customer.status)"> {{ customer.status }}</span>
               </td>
               <td class="text-end">

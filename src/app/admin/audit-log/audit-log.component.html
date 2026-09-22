@@ -301,7 +301,7 @@
               <div class="col-12">
                 <p class="text-muted small mb-1">Changes</p>
                 <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
-                  <table class="table table-sm table-bordered small mb-0">
+                  <table class="table table-sm table-bordered small mb-0 table-stacked">
                     <thead class="table-dark" style="position: sticky; top: 0;">
                       <tr>
                         <th style="width: 30%">Field</th>
@@ -317,9 +317,9 @@
                           [class.table-danger]="row.state === 'removed'"
                           [class.text-muted]="row.state === 'unchanged'"
                         >
-                          <td class="fw-semibold">{{ row.key }}</td>
-                          <td class="font-monospace" style="word-break: break-all;">{{ row.before ?? '—' }}</td>
-                          <td class="font-monospace" style="word-break: break-all;">{{ row.after ?? '—' }}</td>
+                          <td class="fw-semibold" data-label="Field">{{ row.key }}</td>
+                          <td class="font-monospace" style="word-break: break-all;" data-label="Before">{{ row.before ?? '—' }}</td>
+                          <td class="font-monospace" style="word-break: break-all;" data-label="After">{{ row.after ?? '—' }}</td>
                         </tr>
                       }
                     </tbody>

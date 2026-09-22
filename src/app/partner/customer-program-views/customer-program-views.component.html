@@ -71,13 +71,13 @@
         } @else {
           @for (view of views(); track view.viewId) {
             <tr>
-              <td>
+              <td data-label="View">
                 <div class="fw-semibold">{{ view.viewName }}</div>
                 @if (view.description) {
                   <div class="text-muted small">{{ view.description }}</div>
                 }
               </td>
-              <td>
+              <td data-label="Assigned Locations">
                 <div class="position-relative">
                   <div class="d-flex flex-wrap align-items-center gap-1">
                     @if (view.assignedLocations.length) {
@@ -116,13 +116,13 @@
                   }
                 </div>
               </td>
-              <td class="text-center" [class.text-danger]="view.categorySelectedCount === 0">
+              <td class="text-center" [class.text-danger]="view.categorySelectedCount === 0" data-label="Assortments Selected">
                 {{ view.categorySelectedCount }} of {{ view.categoryTotalCount }}
               </td>
-              <td class="text-center" [class.text-danger]="view.prodSelectedCount === 0">
+              <td class="text-center" [class.text-danger]="view.prodSelectedCount === 0" data-label="Products Selected">
                 {{ view.prodSelectedCount }} of {{ view.prodTotalCount }}
               </td>
-              <td class="text-center">
+              <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(view.status)">{{ view.status }}</span>
               </td>
               <td class="text-center">
