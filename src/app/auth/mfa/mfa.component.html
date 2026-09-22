@@ -1,4 +1,4 @@
-<div class="d-grid align-items-center justify-content-center min-vh-100 p-4"
+<div class="d-grid align-items-center justify-content-center min-vh-100 p-0 p-sm-4"
      [class.bg-light]="!(auth.modeReady() && auth.isPartnerLogin())"
      [class.auth-bg-partner]="auth.modeReady() && auth.isPartnerLogin()">
   <div class="card auth-card" [class.auth-card-partner]="auth.modeReady() && auth.isPartnerLogin()">
@@ -47,6 +47,19 @@
                 [class.btn-partner]="auth.modeReady() && auth.isPartnerLogin()">
           {{ loading() ? 'Verifying…' : 'Verify code' }}
         </button>
+
+        <p class="text-center small mb-3">
+          Didn't get a code?
+          <button type="button" class="btn btn-link p-0 align-baseline" (click)="resendCode()" [disabled]="resending() || loading()">
+            {{ resending() ? 'Resending…' : 'Resend code' }}
+          </button>
+        </p>
+
+        @if (resent() && !error()) {
+          <div class="alert alert-success mb-3" role="alert">
+            A new code has been sent.
+          </div>
+        }
 
         @if (error()) {
           <div class="alert alert-danger mb-0" role="alert">

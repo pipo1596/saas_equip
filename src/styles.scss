@@ -1203,7 +1203,13 @@ app-partner-shell {
   height: 3.5rem;
   font-size: 1.5rem;
   font-weight: 700;
-  padding: 0;
+  // !important because the form carries the .biginputs class, whose
+  // ".biginputs .form-control" rule (two classes) outranks this single-class
+  // selector and was otherwise re-adding 0.75rem/1rem padding — on narrow
+  // phones that left almost no room inside each shrunk box for the digit,
+  // so it rendered clipped to a sliver.
+  padding: 0 !important;
+  line-height: 3.4rem;
   caret-color: transparent;
 }
 

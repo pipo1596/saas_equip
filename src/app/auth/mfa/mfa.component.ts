@@ -15,6 +15,8 @@ export class MfaComponent implements AfterViewInit, OnInit {
 
   error = signal<string | null>(null);
   loading = signal(false);
+  resending = signal(false);
+  resent = signal(false);
   form!: FormGroup;
 
   constructor(private fb: FormBuilder, protected auth: AuthService, private router: Router) {
@@ -101,6 +103,24 @@ export class MfaComponent implements AfterViewInit, OnInit {
       this.error.set(error instanceof Error ? error.message : 'Verification failed.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async resendCode(): Promise<void> {
+    this.error.set(null);
+    this.resent.set(false);
+    this.resending.set(true);
+    try {
+      await this.auth.resendMfaCode();
+      for (let i = 0; i < 6; i++) {
+        this.control(i).setValue('');
+      }
+      this.focusInput(0);
+      this.resent.set(true);
+    } catch (error: unknown) {
+      this.error.set(error instanceof Error ? error.message : 'Unable to resend the code.');
+    } finally {
+      this.resending.set(false);
     }
   }
 }

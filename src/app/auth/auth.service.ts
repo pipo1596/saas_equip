@@ -31,6 +31,12 @@ export class AuthService {
   private readonly loginEndpoint =
     `${environment.apiBaseUrl}${environment.endpoints.login}`;
 
+  // Kept in memory only (never persisted/localStorage) for the lifetime of
+  // the MFA-pending window, so the MFA screen can resend a code by
+  // re-submitting LOGIN1/2 without asking the user to re-enter their
+  // password. Cleared as soon as MFA succeeds or the session logs out.
+  private pendingPassword: string | null = null;
+
   private readonly state = signal<AuthState>({
     authenticated: false,
     mfaRequired: false,
@@ -220,6 +226,7 @@ export class AuthService {
       }
 
       if (payload.mfaRequired ?? true) {
+        this.pendingPassword = password;
         this.patch({
           authenticated: false,
           mfaRequired: true,
@@ -235,6 +242,7 @@ export class AuthService {
         return;
       }
 
+      this.pendingPassword = null;
       this.patch({
         authenticated: true,
         mfaRequired: false,
@@ -289,6 +297,7 @@ export class AuthService {
       // already captured if this one doesn't include it.
       const tpId = this.extractTpId(payload as unknown as Record<string, unknown>) ?? this.state().tpId;
 
+      this.pendingPassword = null;
       this.patch({
         authenticated: true,
         mfaRequired: false,
@@ -307,6 +316,20 @@ export class AuthService {
       });
       throw error;
     }
+  }
+
+  // Resends the MFA code by re-submitting the original credentials to
+  // LOGIN1/2 — the same call that triggered the first code — rather than
+  // a dedicated resend action, since APILOGIN doesn't expose one. Requires
+  // the MFA screen to still be within the same in-memory session (a page
+  // refresh clears pendingPassword, same as it already clears pendingMfa).
+  async resendMfaCode(): Promise<void> {
+    const email = this.state().email;
+    const password = this.pendingPassword;
+    if (!email || !password) {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+    await this.login(email, password);
   }
 
   // Pre-authentication actions — deliberately don't touch `state`/persistState,
@@ -351,6 +374,7 @@ export class AuthService {
   }
 
   logout() {
+    this.pendingPassword = null;
     this.state.set({
       authenticated: false,
       mfaRequired: false,
