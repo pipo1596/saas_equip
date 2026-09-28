@@ -13,7 +13,7 @@ import { EmployeeAllotmentsService } from './employee-allotments.service';
 import { EmployeeAllotmentAdjustmentForm, EmployeeAllotmentBalance, EmployeeAllotmentTransaction } from './employee-allotment.model';
 
 const BLANK_ADJUST_FORM: EmployeeAllotmentAdjustmentForm = {
-  direction: 'CREDIT', amountType: 'DOLLARS', amount: 0, reason: '', programId: null, progCatId: null,
+  direction: 'CREDIT', amountType: 'DOLLARS', amount: 0, reason: '', programId: null, progCatId: null, ledgerId: null,
 };
 
 @Component({
@@ -317,7 +317,7 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     return rule.allotType === 'UNITS' || rule.allotType === 'DOLLAR_UNITS';
   }
 
-  openAdjustModal(rule: CustomerAllotmentRule): void {
+  async openAdjustModal(rule: CustomerAllotmentRule): Promise<void> {
     this.adjustTarget.set(rule);
     const amountType = rule.allotType === 'POINTS' ? 'POINTS' : rule.allotType === 'UNITS' ? 'UNITS' : 'DOLLARS';
     this.adjustForm = { ...BLANK_ADJUST_FORM, amountType };
@@ -325,6 +325,21 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     this.adjustError.set(null);
     this.adjustSubmitted.set(false);
     this.showAdjustModal.set(true);
+
+    // The ledger chain is normally only fetched when a row is expanded —
+    // the Adjust button is reachable from a collapsed row too, so make sure
+    // it's loaded here since a Dollar/Points adjustment requires picking one
+    // (Units adjustments don't — unit balances aren't tracked per-ledger).
+    if (amountType !== 'UNITS' && !this.ruleLedgerChains()[rule.ruleId]) {
+      await this.loadExpandedData(rule.ruleId);
+    }
+    if (amountType !== 'UNITS' && this.adjustTarget()?.ruleId === rule.ruleId) {
+      this.adjustForm.ledgerId = this.ledgerChainFor(rule.ruleId)[0]?.ledgerId ?? null;
+    }
+  }
+
+  ledgerChainFor(ruleId: number): RuleLedgerSlot[] {
+    return (this.ruleLedgerChains()[ruleId] ?? []).slice().sort((a, b) => a.precedence - b.precedence);
   }
 
   closeAdjustModal(): void {
@@ -333,13 +348,16 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
   }
 
   onAdjustAmountTypeChange(): void {
+    const rule = this.adjustTarget();
     if (this.adjustForm.amountType === 'UNITS') {
-      const rule = this.adjustTarget();
       const first = rule ? this.scopeFor(rule.ruleId)[0] : null;
       this.onAdjustCategoryChange(first?.progCatId ?? null);
+      // Unit balances aren't tracked per-ledger — no ledger to pick.
+      this.adjustForm.ledgerId = null;
     } else {
       this.adjustForm.progCatId = null;
       this.adjustForm.programId = null;
+      this.adjustForm.ledgerId = rule ? this.ledgerChainFor(rule.ruleId)[0]?.ledgerId ?? null : null;
     }
   }
 
@@ -360,6 +378,7 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     this.adjustSubmitted.set(true);
     if (!this.adjustForm.amount || this.adjustForm.amount <= 0 || !this.adjustForm.reason.trim()) return;
     if (this.adjustForm.amountType === 'UNITS' && this.adjustForm.progCatId == null) return;
+    if (this.adjustForm.amountType !== 'UNITS' && this.adjustForm.ledgerId == null) return;
 
     this.adjustSaving.set(true);
     this.adjustError.set(null);

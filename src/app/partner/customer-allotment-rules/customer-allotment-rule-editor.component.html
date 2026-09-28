@@ -96,7 +96,7 @@
           <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
             @for (c of scopedCategories; track c.progCatId) {
               <span class="badge rounded-pill bg-light text-dark border d-inline-flex align-items-center gap-1 px-3 py-2">
-                <span class="text-muted me-1">{{ c.programName }}:</span>{{ c.categoryName }}
+                <span class="text-muted me-1">{{ c.programName }}:</span>{{ scopeCategoryLabel(c) }}
                 <button type="button" class="btn-close btn-close-sm" style="font-size:0.6rem;" (click)="removeFromScope(c.progCatId)"></button>
               </span>
             }
@@ -127,7 +127,7 @@
                 @for (c of scopedCategories; track c.progCatId) {
                   <tr>
                     <td class="text-muted small" data-label="Uniform Program">{{ c.programName }}</td>
-                    <td data-label="Assortment">{{ c.categoryName }}</td>
+                    <td data-label="Assortment">{{ scopeCategoryLabel(c) }}</td>
                     <td data-label="Unit qty / cycle">
                       <input type="number" min="0" class="form-control form-control-sm"
                              [value]="unitQtyFor(c.progCatId)"

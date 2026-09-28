@@ -245,6 +245,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
       });
       this.unitQtyByCategory.set(qtyMap);
       this.categoryLookup.set(lookup);
+      await this.loadCategoryPaths(Array.from(new Set(scope.map(s => s.programId))));
     } catch {
       // Leave scope empty — editable from scratch.
     }
@@ -330,13 +331,16 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
       // that were only just browsed, not yet part of the saved scope.
       const program = this.allPrograms().find(p => p.programId === programId);
       const lookup = { ...this.categoryLookup() };
+      const pathLookup = { ...this.categoryPathLookup() };
       flat.forEach(c => {
         lookup[c.progCatId] = {
           progCatId: c.progCatId, categoryName: c.rawName,
           programId, programName: program?.programName ?? '',
         };
+        pathLookup[c.progCatId] = c.label;
       });
       this.categoryLookup.set(lookup);
+      this.categoryPathLookup.set(pathLookup);
     } catch {
       this.scopeModalCategories.set([]);
     }
@@ -375,17 +379,25 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   }
 
   private async loadQuotaCategoryPaths(quotas: RuleQuotaLimit[]): Promise<void> {
+    const programIds = Array.from(new Set(quotas.filter(q => q.progCatId != null).map(q => q.programId)));
+    await this.loadCategoryPaths(programIds);
+  }
+
+  // Shared by Scope and Quota Limits — resolves the full "Parent > Child"
+  // breadcrumb for every category in the given assortments and merges it
+  // into categoryPathLookup, so both sections can show the full path
+  // without needing a per-row category fetch.
+  private async loadCategoryPaths(programIds: number[]): Promise<void> {
     const tpId = this.tpId;
     const custId = this.customerId;
     if (!tpId || !custId) return;
-    const programIds = Array.from(new Set(quotas.filter(q => q.progCatId != null).map(q => q.programId)));
     const lookup = { ...this.categoryPathLookup() };
     await Promise.all(programIds.map(async programId => {
       try {
         const tree = await this.programsService.getTree(tpId, custId, programId);
         this.flattenCategories(tree.categories).forEach(c => { lookup[c.progCatId] = c.label; });
       } catch {
-        // Leave unresolved — the row falls back to its own categoryName.
+        // Leave unresolved — falls back to the leaf category name.
       }
     }));
     this.categoryPathLookup.set(lookup);
@@ -394,6 +406,10 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   quotaCategoryLabel(quota: RuleQuotaLimit): string {
     if (quota.progCatId == null) return 'All categories';
     return this.categoryPathLookup()[quota.progCatId] ?? quota.categoryName ?? 'Category';
+  }
+
+  scopeCategoryLabel(c: { progCatId: number; categoryName: string }): string {
+    return this.categoryPathLookup()[c.progCatId] ?? c.categoryName;
   }
 
   // Breadcrumb-style labels ("Outerwear > Jackets") instead of indentation,

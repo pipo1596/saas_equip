@@ -184,13 +184,14 @@
             <th>Allotment</th>
             <th>Adjustment</th>
             <th>Amount</th>
+            <th>Ledger</th>
             <th>Reason</th>
             <th>By</th>
           </tr>
         </thead>
         <tbody>
           @if (adjustmentHistory.length === 0) {
-            <tr><td colspan="6" class="text-center py-4 text-muted">No adjustments on record.</td></tr>
+            <tr><td colspan="7" class="text-center py-4 text-muted">No adjustments on record.</td></tr>
           } @else {
             @for (txn of adjustmentHistory; track txn.transactionId) {
               <tr>
@@ -198,6 +199,7 @@
                 <td class="small" data-label="Allotment">{{ ruleNameFor(txn.ruleId) }}</td>
                 <td data-label="Adjustment"><span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span></td>
                 <td class="small" data-label="Amount">{{ transactionAmountLabel(txn) }}</td>
+                <td class="small" data-label="Ledger">{{ txn.ledgerName || '—' }}</td>
                 <td class="small" data-label="Reason">{{ txn.reason || '—' }}</td>
                 <td class="small" data-label="By">{{ txn.createdBy || '—' }}</td>
               </tr>
@@ -248,6 +250,21 @@
                       }
                     </select>
                     <div class="invalid-feedback">A category is required for a unit adjustment.</div>
+                  </div>
+                } @else {
+                  <div class="col-12">
+                    <label class="form-label small fw-semibold text-uppercase text-muted">Ledger</label>
+                    <select class="form-select" [class.is-invalid]="adjustSubmitted() && adjustForm.ledgerId == null"
+                            [(ngModel)]="adjustForm.ledgerId" name="ledgerId">
+                      <option [ngValue]="null">— Select a ledger —</option>
+                      @for (l of ledgerChainFor(rule.ruleId); track l.ledgerId) {
+                        <option [ngValue]="l.ledgerId">L{{ l.precedence }} — {{ l.ledgerName }}</option>
+                      }
+                    </select>
+                    @if (ledgerChainFor(rule.ruleId).length === 0) {
+                      <div class="text-muted small mt-1">This rule has no payment ledgers configured yet.</div>
+                    }
+                    <div class="invalid-feedback">A ledger is required.</div>
                   </div>
                 }
               }
