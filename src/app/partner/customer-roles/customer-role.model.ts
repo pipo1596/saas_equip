@@ -11,6 +11,7 @@ export interface CustomerRole {
   canApprove: 'Y' | 'N';
   canShopForOthers: 'Y' | 'N';
   canManageTeamBalances: 'Y' | 'N';
+  allotExclTaxFreight: 'Y' | 'N';
   createdTs: string;
   createdBy: string | null;
   updatedTs: string;
@@ -27,6 +28,7 @@ export interface CustomerRoleForm {
   canApprove: 'Y' | 'N';
   canShopForOthers: 'Y' | 'N';
   canManageTeamBalances: 'Y' | 'N';
+  allotExclTaxFreight: 'Y' | 'N';
 }
 
 export interface CustomerRolesPage {

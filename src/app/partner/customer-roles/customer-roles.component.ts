@@ -19,11 +19,13 @@ interface RoleForm {
   canApprove: 'Y' | 'N';
   canShopForOthers: 'Y' | 'N';
   canManageTeamBalances: 'Y' | 'N';
+  allotExclTaxFreight: 'Y' | 'N';
 }
 
 const BLANK_FORM: RoleForm = {
   roleName: '', accessLevel: 'EMPLOYEE', allotmentType: 'NONE', description: '', isActive: 'Y',
   canOrderSelf: 'Y', canApprove: 'N', canShopForOthers: 'N', canManageTeamBalances: 'N',
+  allotExclTaxFreight: 'N',
 };
 
 @Component({
@@ -166,6 +168,7 @@ export class CustomerRolesComponent implements OnInit {
       allotmentType: role.allotmentType,
       description:   role.description ?? '',
       isActive:      role.isActive,
+      allotExclTaxFreight: role.allotExclTaxFreight,
       // Carried through even though this modal doesn't show them — a save
       // here must not blank out permissions set on the role detail page.
       canOrderSelf:          role.canOrderSelf,

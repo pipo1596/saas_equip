@@ -535,6 +535,7 @@ export class CustomerRoleDetailComponent implements OnInit {
         allotmentType: role.allotmentType,
         description: role.description ?? '',
         isActive: role.isActive,
+        allotExclTaxFreight: role.allotExclTaxFreight,
         ...this.permForm,
       };
       await this.rolesService.update(tpId, custId, roleId, payload);

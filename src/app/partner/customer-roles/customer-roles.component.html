@@ -159,6 +159,15 @@
                 <textarea id="rf-description" class="form-control" [(ngModel)]="form.description" name="description" rows="3"></textarea>
               </div>
 
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input id="rf-exclTaxFreight" type="checkbox" role="switch" class="form-check-input"
+                         [ngModel]="form.allotExclTaxFreight === 'Y'"
+                         (ngModelChange)="form.allotExclTaxFreight = $event ? 'Y' : 'N'" name="allotExclTaxFreight" />
+                  <label class="form-check-label" for="rf-exclTaxFreight">Exclude tax &amp; freight from allotment</label>
+                </div>
+              </div>
+
             </div>
 
             @if (saveError()) {
