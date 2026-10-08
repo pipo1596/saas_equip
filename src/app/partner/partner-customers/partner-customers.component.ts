@@ -83,8 +83,8 @@ export class PartnerCustomersComponent implements OnInit {
   fullCustomerUrl(customerUrl: string): string {
     const base = this.portalBaseDomain();
     if (!base) return customerUrl;
-    const normalizedSlug = customerUrl.replace(/\.+$/, '');
-    const normalizedBase = base.replace(/^\.+/, '');
+    const normalizedSlug = customerUrl;
+    const normalizedBase = base;
     return `${normalizedSlug}.${normalizedBase}`;
   }
 

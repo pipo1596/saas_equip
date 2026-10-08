@@ -63,6 +63,13 @@ input[type="radio"].form-check-input {
      margin-bottom: 0;
 }
 
+/* Disabled <option>s (e.g. a dropdown choice blocked by a business rule)
+   render as very light gray instead of the browser's default near-black,
+   so they read as unavailable at a glance. */
+.form-select option:disabled {
+  color: #c9ced6;
+}
+
 .form-control:focus {
   border-color: #4299e1;
   box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.1);

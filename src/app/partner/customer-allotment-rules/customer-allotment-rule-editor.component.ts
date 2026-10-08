@@ -50,6 +50,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
 
   readonly allPrograms = signal<CustomerProgram[]>([]);
   readonly allLedgers = signal<CustomerPaymentLedger[]>([]);
+  readonly siblingRules = signal<CustomerAllotmentRule[]>([]);
 
   form: CustomerAllotmentRuleForm = { ...BLANK_FORM };
 
@@ -134,7 +135,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     if (tpId && custId) await this.customerMode.ensure(tpId, custId);
 
     await Promise.all([this.loadPrograms(), this.loadLedgers()]);
-    if (roleId != null) await this.loadRole(roleId);
+    if (roleId != null) await Promise.all([this.loadRole(roleId), this.loadSiblingRules(roleId)]);
 
     const ruleId = this.ruleId;
     if (ruleId !== null) {
@@ -159,6 +160,44 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     } catch {
       // Non-critical for the editor itself — only affects the header/back link label.
     }
+  }
+
+  // Every other rule already on this role (excluding the one being edited)
+  // — used to enforce the role-level allotment-type combination rules: only
+  // one rule per allotment type, Points can't coexist with a Dollar rule,
+  // and a Dollar+Units rule must always be the role's only rule.
+  private async loadSiblingRules(roleId: number): Promise<void> {
+    const tpId = this.tpId;
+    const custId = this.customerId;
+    if (!tpId || !custId) return;
+    try {
+      const all = await this.service.listAll(tpId, custId, roleId);
+      this.siblingRules.set(all.filter(r => r.ruleId !== this.ruleId));
+    } catch {
+      // Leave empty — worst case the save-time check is skipped and the
+      // backend is the final authority.
+    }
+  }
+
+  // Why `type` can't be selected right now, or null if it's allowed.
+  allotTypeConflict(type: CustomerAllotmentRuleForm['allotType']): string | null {
+    const siblings = this.siblingRules();
+    if (siblings.some(r => r.allotType === 'DOLLAR_UNITS')) {
+      return 'This role already has a Dollar + Units rule, which must be the role’s only allotment rule.';
+    }
+    if (type === 'DOLLAR_UNITS' && siblings.length > 0) {
+      return 'A Dollar + Units rule must be the role’s only allotment rule — remove the other rules first.';
+    }
+    if (siblings.some(r => r.allotType === type)) {
+      return 'This role already has a rule of this type — only one rule per allotment type is allowed.';
+    }
+    if (type === 'POINTS' && siblings.some(r => r.allotType === 'DOLLAR')) {
+      return 'Points and Dollar allotments can’t exist together on the same role.';
+    }
+    if (type === 'DOLLAR' && siblings.some(r => r.allotType === 'POINTS')) {
+      return 'Points and Dollar allotments can’t exist together on the same role.';
+    }
+    return null;
   }
 
   private async loadPrograms(): Promise<void> {
@@ -557,6 +596,12 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     if (!tpId || !custId || roleId == null) return;
     this.submitted.set(true);
     if (!this.form.ruleName) return;
+
+    const conflict = this.allotTypeConflict(this.form.allotType);
+    if (conflict) {
+      this.saveError.set(conflict);
+      return;
+    }
 
     this.saving.set(true);
     this.saveError.set(null);

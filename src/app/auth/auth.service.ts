@@ -84,11 +84,13 @@ export class AuthService {
       .join('');
   });
 
-  // Which login screen to render — 1 = Platform Admin (default, current
-  // behavior), 2 = Tenant Partner. Determined by the MODE action, which
-  // presumably keys off the requesting hostname (e.g. a partner's
-  // white-label subdomain) — not yet confirmed against the real backend.
-  private readonly loginLevelSignal = signal<1 | 2>(1);
+  // Which login screen to render — 1 = Platform Admin, 2 = Tenant Partner
+  // (default — if MODE fails or doesn't return a recognizable loginlevel,
+  // we assume level 2 rather than silently exposing the admin screen).
+  // Determined by the MODE action, which presumably keys off the requesting
+  // hostname (e.g. a partner's white-label subdomain) — not yet confirmed
+  // against the real backend.
+  private readonly loginLevelSignal = signal<1 | 2>(2);
   private loginModeLoaded = false;
   readonly loginLevel = computed(() => this.loginLevelSignal());
   readonly isPartnerLogin = computed(() => this.loginLevelSignal() === 2);
@@ -131,17 +133,22 @@ export class AuthService {
       const raw = await response.text();
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       const level = this.extractLoginLevel(parsed);
-      if (level === 2) {
+      if (level === 1) {
+        this.loginLevelSignal.set(1);
+      } else {
+        if (level !== 2) {
+          // Response parsed fine but didn't contain a recognizable level
+          // field — log the raw shape so the actual contract can be matched.
+          console.warn('AuthService: MODE response did not contain a recognizable loginlevel field, got', parsed);
+        }
         this.loginLevelSignal.set(2);
-      } else if (level !== 1) {
-        // Response parsed fine but didn't contain a recognizable level
-        // field — log the raw shape so the actual contract can be matched.
-        console.warn('AuthService: MODE response did not contain a recognizable loginlevel field, got', parsed);
       }
       this.loginModeLoaded = true;
     } catch {
-      // Fall back to the default Platform Admin screen (level 1) — leave
-      // loginModeLoaded false so a later call can retry.
+      // MODE failed outright — default to the Tenant Partner screen (level
+      // 2) rather than the admin one. Leave loginModeLoaded false so a
+      // later call can retry.
+      this.loginLevelSignal.set(2);
     } finally {
       // Reveal the title either way — a failed MODE call shouldn't leave
       // the page stuck hiding it forever, it just falls back to level 1.

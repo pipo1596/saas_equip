@@ -49,7 +49,7 @@
               <div class="col-12">
                 <div class="text-muted small text-uppercase" style="font-size:0.7rem; letter-spacing:0.04em;">Customer URL</div>
                 @if (c.customerUrl) {
-                  <a [href]="fullCustomerUrl(c.customerUrl)" target="_blank" rel="noopener" class="fw-medium">{{ fullCustomerUrl(c.customerUrl) }}</a>
+                  <a [href]="'https://' + fullCustomerUrl(c.customerUrl)" target="_blank" rel="noopener" class="fw-medium">{{ fullCustomerUrl(c.customerUrl) }}</a>
                 } @else {
                   <div class="fw-medium">—</div>
                 }

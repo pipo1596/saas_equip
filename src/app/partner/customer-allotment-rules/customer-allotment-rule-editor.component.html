@@ -48,11 +48,14 @@
           <div class="col-md-4">
             <label class="form-label fw-medium">Allotment Type</label>
             <select class="form-select" [(ngModel)]="form.allotType" name="allotType" (ngModelChange)="onAllotTypeChange()">
-              <option value="DOLLAR">Dollar</option>
-              <option value="UNITS">Units</option>
-              <option value="DOLLAR_UNITS">Dollar + Units</option>
-              <option value="POINTS">Points</option>
+              <option value="DOLLAR" [disabled]="!!allotTypeConflict('DOLLAR')" [title]="allotTypeConflict('DOLLAR')">Dollar</option>
+              <option value="UNITS" [disabled]="!!allotTypeConflict('UNITS')" [title]="allotTypeConflict('UNITS')">Units</option>
+              <option value="DOLLAR_UNITS" [disabled]="!!allotTypeConflict('DOLLAR_UNITS')" [title]="allotTypeConflict('DOLLAR_UNITS')">Dollar + Units</option>
+              <option value="POINTS" [disabled]="!!allotTypeConflict('POINTS')" [title]="allotTypeConflict('POINTS')">Points</option>
             </select>
+            @if (allotTypeConflict(form.allotType); as conflict) {
+              <div class="text-danger small mt-1">{{ conflict }}</div>
+            }
           </div>
           @if (form.allotType === 'DOLLAR' || form.allotType === 'DOLLAR_UNITS') {
             <div class="col-md-4">

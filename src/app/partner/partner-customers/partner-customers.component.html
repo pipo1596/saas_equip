@@ -98,7 +98,7 @@
               <td data-label="Customer">
                 <div class="fw-semibold">{{ customer.customerName }}</div>
                 @if (customer.customerUrl) {
-                  <a [href]="fullCustomerUrl(customer.customerUrl)" target="_blank" rel="noopener" class="small text-muted">{{ fullCustomerUrl(customer.customerUrl) }}</a>
+                  <a [href]="'https://' + fullCustomerUrl(customer.customerUrl)" target="_blank" rel="noopener" class="small">{{ fullCustomerUrl(customer.customerUrl) }}</a>
                 }
               </td>
               <td class="font-monospace small" data-label="Customer #">{{ customer.customerNmbr }}</td>
