@@ -5,7 +5,7 @@ export interface CustomerAllotmentRule {
   roleId: number;
   ruleName: string;
   status: 'ACTIVE' | 'DRAFT';
-  allotType: 'DOLLAR' | 'UNITS' | 'DOLLAR_UNITS' | 'POINTS';
+  allotType: 'DOLLAR' | 'UNITS' | 'POINTS';
   dollarAmount: number | null;
   pointsAmount: number | null;
   scopeAllAssortments: 'Y' | 'N';
@@ -34,7 +34,7 @@ export interface CustomerAllotmentRule {
 export interface CustomerAllotmentRuleForm {
   ruleName: string;
   status: 'ACTIVE' | 'DRAFT';
-  allotType: 'DOLLAR' | 'UNITS' | 'DOLLAR_UNITS' | 'POINTS';
+  allotType: 'DOLLAR' | 'UNITS' | 'POINTS';
   dollarAmount: number | null;
   pointsAmount: number | null;
   scopeAllAssortments: 'Y' | 'N';
@@ -65,7 +65,7 @@ export interface CustomerAllotmentRulesPage {
 // scopeAllAssortments === 'N'). Scope is category-level, not whole-program
 // — a rule covers specific categories (e.g. "Outerwear") within an
 // assortment, not the entire assortment. unitQty is populated only when
-// allotType is UNITS or DOLLAR_UNITS.
+// allotType is UNITS.
 export interface RuleAssortmentScope {
   progCatId: number;
   categoryName: string;

@@ -233,7 +233,7 @@ export class CustomerRoleDetailComponent implements OnInit {
 
   private get totalDollar(): number {
     return this.rules()
-      .filter(r => r.allotType === 'DOLLAR' || r.allotType === 'DOLLAR_UNITS')
+      .filter(r => r.allotType === 'DOLLAR')
       .reduce((sum, r) => sum + (r.dollarAmount ?? 0), 0);
   }
 
@@ -245,7 +245,7 @@ export class CustomerRoleDetailComponent implements OnInit {
 
   private get totalUnits(): number {
     return this.rules()
-      .filter(r => r.allotType === 'UNITS' || r.allotType === 'DOLLAR_UNITS')
+      .filter(r => r.allotType === 'UNITS')
       .reduce((sum, r) => sum + this.unitsForRule(r.ruleId), 0);
   }
 
@@ -315,7 +315,6 @@ export class CustomerRoleDetailComponent implements OnInit {
     switch (type) {
       case 'DOLLAR': return 'Dollar';
       case 'UNITS': return 'Units';
-      case 'DOLLAR_UNITS': return 'Dollar + Units';
       case 'POINTS': return 'Points';
       default: return type;
     }
@@ -325,11 +324,6 @@ export class CustomerRoleDetailComponent implements OnInit {
     switch (rule.allotType) {
       case 'DOLLAR':
         return rule.dollarAmount != null ? `$${rule.dollarAmount.toFixed(2)}` : '—';
-      case 'DOLLAR_UNITS': {
-        const units = this.unitsForRule(rule.ruleId);
-        const dollar = rule.dollarAmount != null ? `$${rule.dollarAmount.toFixed(2)}` : '$0.00';
-        return `${dollar} + ${units} unit${units === 1 ? '' : 's'}`;
-      }
       case 'UNITS': {
         const units = this.unitsForRule(rule.ruleId);
         return `${units} unit${units === 1 ? '' : 's'}`;

@@ -52,9 +52,6 @@
               <div class="progress" style="height:6px;">
                 <div class="progress-bar bg-success" [style.width.%]="progressPct(r)"></div>
               </div>
-              @if (hasUnits(r) && r.allotType === 'DOLLAR_UNITS') {
-                <div class="text-muted small mt-1">{{ unitsLine(r) }}</div>
-              }
             } @else {
               <div class="fw-semibold">{{ totalAmountLabel(r) }}</div>
               <div class="text-muted small">Not yet active this cycle</div>
@@ -230,15 +227,6 @@
           <form (ngSubmit)="saveAdjustment()" id="adjustForm" novalidate>
             <div class="row gy-2 gx-3">
               @if (adjustTarget(); as rule) {
-                @if (allowsDollarAdjustment(rule) && allowsUnitAdjustment(rule)) {
-                  <div class="col-12">
-                    <label class="form-label small fw-semibold text-uppercase text-muted">Adjust</label>
-                    <select class="form-select" [(ngModel)]="adjustForm.amountType" name="amountType" (ngModelChange)="onAdjustAmountTypeChange()">
-                      <option value="DOLLARS">Dollar balance</option>
-                      <option value="UNITS">Unit balance</option>
-                    </select>
-                  </div>
-                }
                 @if (adjustForm.amountType === 'UNITS') {
                   <div class="col-12">
                     <label class="form-label small fw-semibold text-uppercase text-muted">Category</label>

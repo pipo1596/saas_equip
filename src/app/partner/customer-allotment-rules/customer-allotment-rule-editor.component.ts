@@ -63,7 +63,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   readonly categoryLookup = signal<Record<number, { progCatId: number; categoryName: string; programId: number; programName: string }>>({});
   readonly showScopeModal = signal(false);
   readonly scopeModalProgramId = signal<number | null>(null);
-  readonly scopeModalCategories = signal<{ progCatId: number; label: string; rawName: string }[]>([]);
+  readonly scopeModalCategories = signal<{ progCatId: number; label: string; rawName: string; isLeaf: boolean }[]>([]);
   readonly scopeModalCategoryId = signal<number | null>(null);
 
   // ── Quota limits ─────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   readonly editingQuotaId = signal<number | null>(null);
   readonly quotaSaving = signal(false);
   readonly quotaError = signal<string | null>(null);
-  readonly quotaCategories = signal<{ progCatId: number | null; label: string }[]>([]);
+  readonly quotaCategories = signal<{ progCatId: number | null; label: string; isLeaf: boolean }[]>([]);
   // progCatId -> breadcrumb label ("Outerwear > Jackets"), resolved for
   // every program referenced by the loaded quotas so the list can show full
   // parent > child paths without needing a per-row category fetch.
@@ -109,7 +109,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   }
 
   get needsUnitScope(): boolean {
-    return this.form.allotType === 'UNITS' || this.form.allotType === 'DOLLAR_UNITS';
+    return this.form.allotType === 'UNITS';
   }
 
   get allowsPartialCarryover(): boolean {
@@ -163,9 +163,8 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   }
 
   // Every other rule already on this role (excluding the one being edited)
-  // — used to enforce the role-level allotment-type combination rules: only
-  // one rule per allotment type, Points can't coexist with a Dollar rule,
-  // and a Dollar+Units rule must always be the role's only rule.
+  // — used to enforce the role-level allotment-type combination rule:
+  // Points can't coexist with a Dollar rule.
   private async loadSiblingRules(roleId: number): Promise<void> {
     const tpId = this.tpId;
     const custId = this.customerId;
@@ -182,15 +181,6 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   // Why `type` can't be selected right now, or null if it's allowed.
   allotTypeConflict(type: CustomerAllotmentRuleForm['allotType']): string | null {
     const siblings = this.siblingRules();
-    if (siblings.some(r => r.allotType === 'DOLLAR_UNITS')) {
-      return 'This role already has a Dollar + Units rule, which must be the role’s only allotment rule.';
-    }
-    if (type === 'DOLLAR_UNITS' && siblings.length > 0) {
-      return 'A Dollar + Units rule must be the role’s only allotment rule — remove the other rules first.';
-    }
-    if (siblings.some(r => r.allotType === type)) {
-      return 'This role already has a rule of this type — only one rule per allotment type is allowed.';
-    }
     if (type === 'POINTS' && siblings.some(r => r.allotType === 'DOLLAR')) {
       return 'Points and Dollar allotments can’t exist together on the same role.';
     }
@@ -385,10 +375,12 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     }
   }
 
-  // Categories in the currently-browsed assortment that aren't already in scope.
-  availableScopeModalCategories(): { progCatId: number; label: string; rawName: string }[] {
+  // Leaf categories in the currently-browsed assortment that aren't already
+  // in scope — parent/branch categories aren't selectable since they don't
+  // directly hold any SKUs.
+  availableScopeModalCategories(): { progCatId: number; label: string; rawName: string; isLeaf: boolean }[] {
     const inScope = this.scopeCategoryIds();
-    return this.scopeModalCategories().filter(c => !inScope.has(c.progCatId));
+    return this.scopeModalCategories().filter(c => c.isLeaf && !inScope.has(c.progCatId));
   }
 
   // Adds the single selected category to scope immediately, then clears the
@@ -452,12 +444,18 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   }
 
   // Breadcrumb-style labels ("Outerwear > Jackets") instead of indentation,
-  // so the parent chain stays legible in a flat <select> list.
-  private flattenCategories(nodes: CustomerProgramCategoryNode[], parentPath = ''): { progCatId: number; label: string; rawName: string }[] {
-    const out: { progCatId: number; label: string; rawName: string }[] = [];
+  // so the parent chain stays legible in a flat <select> list. Includes
+  // every node (leaf and parent) since path lookups need the full tree to
+  // resolve breadcrumbs — callers building a picker should filter to
+  // isLeaf themselves (a rule/quota should target a concrete leaf category,
+  // not a parent grouping that doesn't directly hold any SKUs).
+  private flattenCategories(
+    nodes: CustomerProgramCategoryNode[], parentPath = '',
+  ): { progCatId: number; label: string; rawName: string; isLeaf: boolean }[] {
+    const out: { progCatId: number; label: string; rawName: string; isLeaf: boolean }[] = [];
     for (const n of nodes) {
       const label = parentPath ? `${parentPath} > ${n.categoryName}` : n.categoryName;
-      out.push({ progCatId: n.progCatId, label, rawName: n.categoryName });
+      out.push({ progCatId: n.progCatId, label, rawName: n.categoryName, isLeaf: n.children.length === 0 });
       out.push(...this.flattenCategories(n.children, label));
     }
     return out;
@@ -472,7 +470,9 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     }
     try {
       const tree = await this.programsService.getTree(tpId, custId, this.quotaForm.programId);
-      this.quotaCategories.set(this.flattenCategories(tree.categories));
+      // Leaf categories only — a quota should target a concrete category
+      // that directly holds SKUs, not a parent grouping.
+      this.quotaCategories.set(this.flattenCategories(tree.categories).filter(c => c.isLeaf));
     } catch {
       this.quotaCategories.set([]);
     }
@@ -595,11 +595,15 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     const roleId = this.roleId;
     if (!tpId || !custId || roleId == null) return;
     this.submitted.set(true);
-    if (!this.form.ruleName) return;
+    if (!this.form.ruleName) {
+      this.scrollToAndFocus('rf-ruleName');
+      return;
+    }
 
     const conflict = this.allotTypeConflict(this.form.allotType);
     if (conflict) {
       this.saveError.set(conflict);
+      this.scrollToAndFocus('rf-allotType');
       return;
     }
 
@@ -643,5 +647,14 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     const custId = this.customerId;
     const roleId = this.roleId;
     this.router.navigate(['/partner', tpId, 'customers', custId, 'roles', roleId]);
+  }
+
+  // This is a long single-page form — a validation error on a field near
+  // the top (Rule Name, Allotment Type) is otherwise invisible if the user
+  // clicked Save from further down the page.
+  private scrollToAndFocus(elementId: string): void {
+    const el = document.getElementById(elementId);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.focus();
   }
 }

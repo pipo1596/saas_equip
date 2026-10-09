@@ -100,7 +100,7 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
       this.balances.set(balances);
       this.transactions.set(transactions);
 
-      const unitRules = rules.filter(r => r.allotType === 'UNITS' || r.allotType === 'DOLLAR_UNITS');
+      const unitRules = rules.filter(r => r.allotType === 'UNITS');
       await this.loadScopesFor(unitRules, roleId);
     } catch (err) {
       this.loadError.set(err instanceof Error ? err.message : 'Failed to load allotment summary.');
@@ -142,7 +142,6 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     switch (type) {
       case 'DOLLAR': return 'Dollar';
       case 'UNITS': return 'Units';
-      case 'DOLLAR_UNITS': return 'Dollar + Units';
       case 'POINTS': return 'Points';
       default: return type;
     }
@@ -156,19 +155,8 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     return (this.ruleScopes()[ruleId] ?? []).reduce((sum, s) => sum + (s.unitQty ?? 0), 0);
   }
 
-  hasUnits(rule: CustomerAllotmentRule): boolean {
-    return rule.allotType === 'UNITS' || rule.allotType === 'DOLLAR_UNITS';
-  }
-
-  unitsLine(rule: CustomerAllotmentRule): string {
-    const balance = this.balanceFor(rule.ruleId);
-    const remaining = this.unitsRemaining(balance);
-    const total = this.unitsTotal(rule.ruleId);
-    return `${remaining} of ${total} unit${total === 1 ? '' : 's'}`;
-  }
-
   // Primary remaining/total pair driving the progress bar — dollars for
-  // DOLLAR/DOLLAR_UNITS, points for POINTS, unit count for plain UNITS.
+  // DOLLAR, points for POINTS, unit count for UNITS.
   primaryRemaining(rule: CustomerAllotmentRule): number {
     const balance = this.balanceFor(rule.ruleId);
     if (rule.allotType === 'POINTS') return balance?.pointsBalance ?? 0;
@@ -309,14 +297,6 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
 
   // ── Manual adjustment ────────────────────────────────────────────────────
 
-  allowsDollarAdjustment(rule: CustomerAllotmentRule): boolean {
-    return rule.allotType === 'DOLLAR' || rule.allotType === 'DOLLAR_UNITS';
-  }
-
-  allowsUnitAdjustment(rule: CustomerAllotmentRule): boolean {
-    return rule.allotType === 'UNITS' || rule.allotType === 'DOLLAR_UNITS';
-  }
-
   async openAdjustModal(rule: CustomerAllotmentRule): Promise<void> {
     this.adjustTarget.set(rule);
     const amountType = rule.allotType === 'POINTS' ? 'POINTS' : rule.allotType === 'UNITS' ? 'UNITS' : 'DOLLARS';
@@ -345,20 +325,6 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
   closeAdjustModal(): void {
     this.showAdjustModal.set(false);
     this.adjustTarget.set(null);
-  }
-
-  onAdjustAmountTypeChange(): void {
-    const rule = this.adjustTarget();
-    if (this.adjustForm.amountType === 'UNITS') {
-      const first = rule ? this.scopeFor(rule.ruleId)[0] : null;
-      this.onAdjustCategoryChange(first?.progCatId ?? null);
-      // Unit balances aren't tracked per-ledger — no ledger to pick.
-      this.adjustForm.ledgerId = null;
-    } else {
-      this.adjustForm.progCatId = null;
-      this.adjustForm.programId = null;
-      this.adjustForm.ledgerId = rule ? this.ledgerChainFor(rule.ruleId)[0]?.ledgerId ?? null : null;
-    }
   }
 
   onAdjustCategoryChange(progCatId: number | null): void {
