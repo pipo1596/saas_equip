@@ -93,7 +93,18 @@ export class AuthService {
   private readonly loginLevelSignal = signal<1 | 2>(2);
   private loginModeLoaded = false;
   readonly loginLevel = computed(() => this.loginLevelSignal());
-  readonly isPartnerLogin = computed(() => this.loginLevelSignal() === 2);
+  // Before authentication (the login/MFA/forgot-password screens), this
+  // reflects MODE's answer (or its level-2 default — see above) for which
+  // screen to render. Once authenticated, MODE is never re-checked in this
+  // tab (fetchLoginMode() only runs from those pre-auth pages), so deferring
+  // to loginLevelSignal here would wrongly report a restored/already-logged-in
+  // Platform Admin session as a Tenant Partner one (its default is level 2).
+  // The actual, persisted source of truth post-auth is whether the
+  // LOGIN1/LOGIN2 (or MFA) response carried a tpId at all.
+  readonly isPartnerLogin = computed(() => {
+    const state = this.state();
+    return state.authenticated ? state.tpId != null : this.loginLevelSignal() === 2;
+  });
   readonly portalTitle = computed(() => this.isPartnerLogin() ? 'Tenant Partner Portal' : 'Platform Admin Portal');
   // False until fetchLoginMode() has resolved (success or failure) — lets
   // the login/forgot-password pages hold off rendering the title so it
