@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, QueryList, ViewChildren, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { PartnerModeService } from '../partner-mode.service';
@@ -13,7 +13,7 @@ import { EmployeeAllotmentsService } from './employee-allotments.service';
 import { EmployeeAllotmentAdjustmentForm, EmployeeAllotmentBalance, EmployeeAllotmentTransaction } from './employee-allotment.model';
 
 const BLANK_ADJUST_FORM: EmployeeAllotmentAdjustmentForm = {
-  direction: 'CREDIT', amountType: 'DOLLARS', amount: 0, reason: '', programId: null, progCatId: null, ledgerId: null,
+  direction: 'CREDIT', amountType: 'DOLLARS', amount: 0, reason: '', programId: null, progCatId: null,
 };
 
 @Component({
@@ -22,7 +22,9 @@ const BLANK_ADJUST_FORM: EmployeeAllotmentAdjustmentForm = {
   imports: [RouterModule, FormsModule],
   templateUrl: './customer-employee-allotment.component.html',
 })
-export class CustomerEmployeeAllotmentComponent implements OnInit {
+export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit {
+  @ViewChildren('historyScroll') private historyScrollEls!: QueryList<ElementRef<HTMLDivElement>>;
+
   protected readonly partnerMode = inject(PartnerModeService);
   protected readonly customerMode = inject(CustomerModeService);
   private readonly employeesService = inject(CustomerEmployeesService);
@@ -70,6 +72,25 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
   protected get employeeId(): number | null {
     const p = this.route.snapshot.paramMap.get('employeeId');
     return p ? Number(p) : null;
+  }
+
+  ngAfterViewInit(): void {
+    // Groups render only once the async data in ngOnInit resolves, so the
+    // scroll containers don't exist yet at this point — .changes fires once
+    // they do (and again if a rule's group is added/removed later).
+    this.historyScrollEls.changes.subscribe(() => this.scrollHistoryToBottom());
+    this.scrollHistoryToBottom();
+  }
+
+  // Each allotment's history section shows oldest-first with newest at the
+  // bottom, so scrolling the (height-capped) container to its bottom reveals
+  // the latest adjustments by default instead of requiring a manual scroll.
+  private scrollHistoryToBottom(): void {
+    queueMicrotask(() => {
+      this.historyScrollEls?.forEach(el => {
+        el.nativeElement.scrollTop = el.nativeElement.scrollHeight;
+      });
+    });
   }
 
   async ngOnInit(): Promise<void> {
@@ -297,7 +318,7 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
 
   // ── Manual adjustment ────────────────────────────────────────────────────
 
-  async openAdjustModal(rule: CustomerAllotmentRule): Promise<void> {
+  openAdjustModal(rule: CustomerAllotmentRule): void {
     this.adjustTarget.set(rule);
     const amountType = rule.allotType === 'POINTS' ? 'POINTS' : rule.allotType === 'UNITS' ? 'UNITS' : 'DOLLARS';
     this.adjustForm = { ...BLANK_ADJUST_FORM, amountType };
@@ -305,21 +326,6 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     this.adjustError.set(null);
     this.adjustSubmitted.set(false);
     this.showAdjustModal.set(true);
-
-    // The ledger chain is normally only fetched when a row is expanded —
-    // the Adjust button is reachable from a collapsed row too, so make sure
-    // it's loaded here since a Dollar/Points adjustment requires picking one
-    // (Units adjustments don't — unit balances aren't tracked per-ledger).
-    if (amountType !== 'UNITS' && !this.ruleLedgerChains()[rule.ruleId]) {
-      await this.loadExpandedData(rule.ruleId);
-    }
-    if (amountType !== 'UNITS' && this.adjustTarget()?.ruleId === rule.ruleId) {
-      this.adjustForm.ledgerId = this.ledgerChainFor(rule.ruleId)[0]?.ledgerId ?? null;
-    }
-  }
-
-  ledgerChainFor(ruleId: number): RuleLedgerSlot[] {
-    return (this.ruleLedgerChains()[ruleId] ?? []).slice().sort((a, b) => a.precedence - b.precedence);
   }
 
   closeAdjustModal(): void {
@@ -344,7 +350,6 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     this.adjustSubmitted.set(true);
     if (!this.adjustForm.amount || this.adjustForm.amount <= 0 || !this.adjustForm.reason.trim()) return;
     if (this.adjustForm.amountType === 'UNITS' && this.adjustForm.progCatId == null) return;
-    if (this.adjustForm.amountType !== 'UNITS' && this.adjustForm.ledgerId == null) return;
 
     this.adjustSaving.set(true);
     this.adjustError.set(null);
@@ -358,6 +363,7 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
       ]);
       this.balances.set(balances);
       this.transactions.set(transactions);
+      this.scrollHistoryToBottom();
     } catch (err) {
       this.adjustError.set(err instanceof Error ? err.message : 'Failed to save adjustment.');
     } finally {
@@ -419,12 +425,35 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
     return this.ruleQuotas()[ruleId] ?? [];
   }
 
-  // ── Adjustment history ───────────────────────────────────────────────────
+  // ── Transaction history ──────────────────────────────────────────────────
 
-  get adjustmentHistory(): EmployeeAllotmentTransaction[] {
+  // Every transaction, not just manual adjustments — DEBIT (order draws),
+  // RENEWAL, CARRYOVER, and EXPIRE are the normal system-driven lifecycle,
+  // shown here alongside ADJUSTMENT/CREDIT rather than hidden from the log.
+  get transactionHistory(): EmployeeAllotmentTransaction[] {
     return this.transactions()
-      .filter(t => t.txnType === 'ADJUSTMENT' || t.txnType === 'CREDIT')
+      .slice()
       .sort((a, b) => b.createdTs.localeCompare(a.createdTs));
+  }
+
+  // transactionHistory grouped by rule — sections are ordered by whichever
+  // rule's most recent transaction is newest (transactionHistory is sorted
+  // newest-first and Map preserves first-insertion order), but each
+  // section's own rows are oldest-first so the newest sits at the bottom —
+  // matching its scrollable container defaulting to a bottom scroll.
+  get groupedTransactionHistory(): { ruleId: number; ruleName: string; transactions: EmployeeAllotmentTransaction[] }[] {
+    const groups = new Map<number, EmployeeAllotmentTransaction[]>();
+    for (const txn of this.transactionHistory) {
+      const list = groups.get(txn.ruleId);
+      if (list) {
+        list.push(txn);
+      } else {
+        groups.set(txn.ruleId, [txn]);
+      }
+    }
+    return Array.from(groups.entries()).map(([ruleId, transactions]) => ({
+      ruleId, ruleName: this.ruleNameFor(ruleId), transactions: transactions.slice().reverse(),
+    }));
   }
 
   ruleNameFor(ruleId: number): string {
@@ -454,7 +483,13 @@ export class CustomerEmployeeAllotmentComponent implements OnInit {
 
   transactionTypeLabel(txn: EmployeeAllotmentTransaction): string {
     const isCredit = this.effectiveDirection(txn) === 'CREDIT';
-    if (txn.txnType === 'ADJUSTMENT') return isCredit ? 'Adjustment (Credit)' : 'Adjustment (Debit)';
-    return isCredit ? 'Credit' : 'Debit';
+    switch (txn.txnType) {
+      case 'ADJUSTMENT': return isCredit ? 'Adjustment (Credit)' : 'Adjustment (Debit)';
+      case 'DEBIT': return 'Order';
+      case 'RENEWAL': return 'Renewal';
+      case 'CARRYOVER': return 'Carryover';
+      case 'EXPIRE': return 'Expired';
+      default: return isCredit ? 'Credit' : 'Debit';
+    }
   }
 }

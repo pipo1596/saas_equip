@@ -45,9 +45,6 @@ export interface EmployeeAllotmentAdjustmentForm {
   reason: string;
   programId: number | null;
   progCatId: number | null;
-  // Always required, regardless of amountType — which of the rule's
-  // configured payment ledgers this adjustment is recorded against.
-  ledgerId: number | null;
 }
 
 // Append-only ledger entry. The "Adjustment history" display filters this
@@ -66,8 +63,4 @@ export interface EmployeeAllotmentTransaction {
   amount: number;
   reason: string | null;
   createdBy: string | null;
-  // Which of the rule's configured payment ledgers this transaction was
-  // recorded against — mirrors RuleLedgerSlot's field names.
-  ledgerId: number | null;
-  ledgerName: string | null;
 }

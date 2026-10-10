@@ -171,40 +171,41 @@
       </div>
     }
 
-    <!-- Adjustment history -->
-    <h6 class="fw-semibold mt-4 mb-2">Adjustment History</h6>
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0 table-stacked">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Allotment</th>
-            <th>Adjustment</th>
-            <th>Amount</th>
-            <th>Ledger</th>
-            <th>Reason</th>
-            <th>By</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (adjustmentHistory.length === 0) {
-            <tr><td colspan="7" class="text-center py-4 text-muted">No adjustments on record.</td></tr>
-          } @else {
-            @for (txn of adjustmentHistory; track txn.transactionId) {
+    <!-- Transaction history -->
+    <h6 class="fw-semibold mt-4 mb-2">Transaction History</h6>
+    @if (transactionHistory.length === 0) {
+      <p class="text-muted small text-center py-4 mb-0">No transactions on record.</p>
+    } @else {
+      @for (group of groupedTransactionHistory; track group.ruleId) {
+        <div class="text-uppercase text-muted fw-semibold mt-3 mb-1" style="font-size:.95rem; letter-spacing:.04em;">
+          {{ group.ruleName }}
+        </div>
+        <div #historyScroll class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+          <table class="table table-hover align-middle mb-0 table-stacked">
+            <thead class="sticky-top">
               <tr>
-                <td class="small" data-label="Date">{{ formatDate(txn.createdTs.slice(0, 10)) }}</td>
-                <td class="small" data-label="Allotment">{{ ruleNameFor(txn.ruleId) }}</td>
-                <td data-label="Adjustment"><span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span></td>
-                <td class="small" data-label="Amount">{{ transactionAmountLabel(txn) }}</td>
-                <td class="small" data-label="Ledger">{{ txn.ledgerName || '—' }}</td>
-                <td class="small" data-label="Reason">{{ txn.reason || '—' }}</td>
-                <td class="small" data-label="By">{{ txn.createdBy || '—' }}</td>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Amount</th>
+                <th>Reason</th>
+                <th>By</th>
               </tr>
-            }
-          }
-        </tbody>
-      </table>
-    </div>
+            </thead>
+            <tbody>
+              @for (txn of group.transactions; track txn.transactionId) {
+                <tr>
+                  <td class="small" data-label="Date">{{ formatDate(txn.createdTs.slice(0, 10)) }}</td>
+                  <td data-label="Type"><span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span></td>
+                  <td class="small" data-label="Amount">{{ transactionAmountLabel(txn) }}</td>
+                  <td class="small" data-label="Reason">{{ txn.reason || '—' }}</td>
+                  <td class="small" data-label="By">{{ txn.createdBy || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
 
   }
 
@@ -238,21 +239,6 @@
                       }
                     </select>
                     <div class="invalid-feedback">A category is required for a unit adjustment.</div>
-                  </div>
-                } @else {
-                  <div class="col-12">
-                    <label class="form-label small fw-semibold text-uppercase text-muted">Ledger</label>
-                    <select class="form-select" [class.is-invalid]="adjustSubmitted() && adjustForm.ledgerId == null"
-                            [(ngModel)]="adjustForm.ledgerId" name="ledgerId">
-                      <option [ngValue]="null">— Select a ledger —</option>
-                      @for (l of ledgerChainFor(rule.ruleId); track l.ledgerId) {
-                        <option [ngValue]="l.ledgerId">L{{ l.precedence }} — {{ l.ledgerName }}</option>
-                      }
-                    </select>
-                    @if (ledgerChainFor(rule.ruleId).length === 0) {
-                      <div class="text-muted small mt-1">This rule has no payment ledgers configured yet.</div>
-                    }
-                    <div class="invalid-feedback">A ledger is required.</div>
                   </div>
                 }
               }
