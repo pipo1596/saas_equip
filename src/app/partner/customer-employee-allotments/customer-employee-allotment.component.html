@@ -46,12 +46,24 @@
 
           <span class="badge rounded-pill" style="background:#EAF3DE; color:#3B6D11; border:1px solid #C4DDA6;">{{ allotTypeLabel(r.allotType) }}</span>
 
-          <div style="min-width:180px; flex:1 1 180px;">
+          <div style="min-width:180px; flex:1 1 220px;">
             @if (hasBalance(r)) {
-              <div class="fw-semibold">{{ primaryLabel(r) }}</div>
-              <div class="progress" style="height:6px;">
-                <div class="progress-bar bg-success" [style.width.%]="progressPct(r)"></div>
-              </div>
+              @if (r.allotType === 'UNITS') {
+                @for (b of unitBreakdown(r); track b.progCatId) {
+                  <div class="d-flex justify-content-between gap-2 small">
+                    <span class="text-muted text-truncate">{{ b.categoryName }}</span>
+                    <span class="fw-medium text-nowrap">
+                      {{ b.remaining }} / {{ b.total }}
+                      <span class="text-muted fw-normal">· {{ unitUsedAdjLabel(r) }}</span>
+                    </span>
+                  </div>
+                }
+              } @else {
+                <div class="fw-semibold">{{ primaryLabel(r) }}</div>
+                <div class="progress" style="height:6px;">
+                  <div class="progress-bar bg-success" [style.width.%]="progressPct(r)"></div>
+                </div>
+              }
             } @else {
               <div class="fw-semibold">{{ totalAmountLabel(r) }}</div>
               <div class="text-muted small">Not yet active this cycle</div>
@@ -186,6 +198,7 @@
               <tr>
                 <th>Date</th>
                 <th>Type</th>
+                <th>Category</th>
                 <th>Amount</th>
                 <th>Reason</th>
                 <th>By</th>
@@ -196,6 +209,7 @@
                 <tr>
                   <td class="small" data-label="Date">{{ formatDate(txn.createdTs.slice(0, 10)) }}</td>
                   <td data-label="Type"><span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span></td>
+                  <td class="small" data-label="Category">{{ categoryNameFor(txn) }}</td>
                   <td class="small" data-label="Amount">{{ transactionAmountLabel(txn) }}</td>
                   <td class="small" data-label="Reason">{{ txn.reason || '—' }}</td>
                   <td class="small" data-label="By">{{ txn.createdBy || '—' }}</td>

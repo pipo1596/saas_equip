@@ -61,6 +61,10 @@ export interface EmployeeAllotmentTransaction {
   // for a credit-direction one, confirmed against actual responses. Credit
   // vs. debit is derived from this sign, not from txnType/a separate field.
   amount: number;
+  // Only populated for a UNITS-type entry — the rule-scope category this
+  // transaction was recorded against (mirrors TP_EMP_ALLOTMENT_TRANSACTIONS'
+  // own PROG_CAT_ID column for that case).
+  progCatId: number | null;
   reason: string | null;
   createdBy: string | null;
 }

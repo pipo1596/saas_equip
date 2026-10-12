@@ -176,6 +176,36 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     return (this.ruleScopes()[ruleId] ?? []).reduce((sum, s) => sum + (s.unitQty ?? 0), 0);
   }
 
+  // Per-category remaining/total for a UNITS rule, instead of one number
+  // lumped across every category in scope. Caveat: TP_EMP_UNIT_BALANCES
+  // tracks remaining units by programId, not progCatId (it predates the
+  // category-level scope recat on the rule side), so if two scoped
+  // categories share the same program, they'll show the same remaining
+  // figure — this reflects what the balance data actually distinguishes,
+  // not a true per-category split in that case.
+  unitBreakdown(rule: CustomerAllotmentRule): { progCatId: number; categoryName: string; remaining: number; total: number }[] {
+    const remainingByProgram = new Map<number, number>();
+    (this.balanceFor(rule.ruleId)?.unitBalances ?? []).forEach(u => remainingByProgram.set(u.programId, u.unitBalance));
+    return this.scopeFor(rule.ruleId).map(s => ({
+      progCatId: s.progCatId,
+      categoryName: s.categoryName,
+      remaining: remainingByProgram.get(s.programId) ?? 0,
+      total: s.unitQty ?? 0,
+    }));
+  }
+
+  // Used/adjusted units, for display next to each category row in the unit
+  // breakdown. These are the rule's single aggregate figures (the balance
+  // row doesn't break used/adjustment out per category) — every row shows
+  // the same rule-level numbers, same caveat as unitBreakdown() above.
+  unitUsedAdjLabel(rule: CustomerAllotmentRule): string {
+    const balance = this.balanceFor(rule.ruleId);
+    if (!balance) return '';
+    const amt = balance.adjustmentAmount;
+    const sign = amt > 0 ? '+' : amt < 0 ? '-' : '';
+    return `Used ${balance.usedAmount} · Adj ${sign}${Math.abs(amt)}`;
+  }
+
   // Primary remaining/total pair driving the progress bar — dollars for
   // DOLLAR, points for POINTS, unit count for UNITS.
   primaryRemaining(rule: CustomerAllotmentRule): number {
@@ -227,7 +257,9 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
   usedLabel(rule: CustomerAllotmentRule): string {
     const balance = this.balanceFor(rule.ruleId);
     if (!balance) return '—';
-    return rule.allotType === 'POINTS' ? `${balance.usedAmount} pts` : `$${balance.usedAmount.toFixed(2)}`;
+    if (rule.allotType === 'POINTS') return `${balance.usedAmount} pts`;
+    if (rule.allotType === 'UNITS') return `${balance.usedAmount} unit${balance.usedAmount === 1 ? '' : 's'}`;
+    return `$${balance.usedAmount.toFixed(2)}`;
   }
 
   adjustmentLabel(rule: CustomerAllotmentRule): string {
@@ -236,7 +268,9 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     const amt = balance.adjustmentAmount;
     const sign = amt > 0 ? '+' : amt < 0 ? '-' : '';
     const abs = Math.abs(amt);
-    return rule.allotType === 'POINTS' ? `${sign}${abs} pts` : `${sign}$${abs.toFixed(2)}`;
+    if (rule.allotType === 'POINTS') return `${sign}${abs} pts`;
+    if (rule.allotType === 'UNITS') return `${sign}${abs} unit${abs === 1 ? '' : 's'}`;
+    return `${sign}$${abs.toFixed(2)}`;
   }
 
   formatDate(iso: string | null): string {
@@ -458,6 +492,14 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
 
   ruleNameFor(ruleId: number): string {
     return this.rules().find(r => r.ruleId === ruleId)?.ruleName ?? `Rule #${ruleId}`;
+  }
+
+  // Category label for a UNITS-type transaction's progCatId — '—' for
+  // non-UNITS transactions (progCatId is null) or if the category can't be
+  // resolved from the rule's own scope.
+  categoryNameFor(txn: EmployeeAllotmentTransaction): string {
+    if (txn.progCatId == null) return '—';
+    return this.scopeFor(txn.ruleId).find(s => s.progCatId === txn.progCatId)?.categoryName ?? '—';
   }
 
   // The API returns a signed amount (negative = debit, positive = credit)
