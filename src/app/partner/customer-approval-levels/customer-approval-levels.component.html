@@ -35,7 +35,7 @@
           <tr>
             <th style="width:70px;">Level</th>
             <th>Over</th>
-            <th>Approves up to</th>
+            <th>Final approval up to</th>
             <th style="width:160px;">Escalation days</th>
             <th>Roles at this level</th>
             <th class="text-end" style="width:140px;">Actions</th>
@@ -51,15 +51,21 @@
             <tr>
               <td class="fw-semibold" data-label="Level">{{ i + 1 }}</td>
               <td class="text-muted small" data-label="Over">${{ minAmountFor(i) }}</td>
-              <td data-label="Approves up to">
+              <td data-label="Final approval up to">
                 @if (isLastRow(i)) {
-                  <span class="badge bg-light text-dark border">No limit</span>
+                  <span class="badge bg-light text-dark border">Final approval, any amount</span>
                 } @else {
-                  <div class="d-flex align-items-center gap-2">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
                     <div class="input-group" style="max-width:160px;">
                       <span class="input-group-text">$</span>
                       <input type="number" min="0" step="1" class="form-control"
-                             [value]="row.maxAmount" (input)="onMaxAmountChange(i, $any($event.target).value)" />
+                             [value]="row.maxAmount" [disabled]="row.passesUp"
+                             (input)="onMaxAmountChange(i, $any($event.target).value)" />
+                    </div>
+                    <div class="form-check mb-0">
+                      <input class="form-check-input" type="checkbox" [id]="'passesUp' + i"
+                             [checked]="row.passesUp" (change)="onPassesUpChange(i, $any($event.target).checked)" />
+                      <label class="form-check-label small" [for]="'passesUp' + i">Always passes up</label>
                     </div>
                   </div>
                 }

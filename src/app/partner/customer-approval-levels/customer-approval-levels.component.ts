@@ -4,16 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { PartnerModeService } from '../partner-mode.service';
 import { CustomerModeService } from '../partner-customers/customer-mode.service';
 import { CustomerApprovalLevelsService } from './customer-approval-levels.service';
-import { ApprovalLevelRoleRef, ApprovalOverrideRole, ApprovalSimulation, LevelSyncItem } from './customer-approval-level.model';
+import { ApprovalLadder, ApprovalLevelRoleRef, ApprovalOverrideRole, ApprovalSimulation, LevelSyncItem } from './customer-approval-level.model';
 
 // Local editable row — levelNo/minAmount aren't stored here, they're derived
 // from the row's position in the array (levelNo = index+1; minAmount = the
-// previous row's maxAmount, 0 for the first row). The last row is always
-// forced to "No limit", matching "the top level always has no limit".
+// highest maxAmount among rows above that have one, 0 if none). The last row
+// always gives final approval for any amount; a non-last row with no amount
+// (passesUp) always forwards instead of ever finishing an order.
 interface LevelRow {
   levelId: number; // 0 = new, sent as levelId: 0 on *SYNC
-  maxAmount: number | null; // null while noLimit is true
-  noLimit: boolean;
+  maxAmount: number | null; // null while passesUp is true (or it's the top row)
+  passesUp: boolean; // meaningless for the top row — it's always "any amount" regardless
   escalationDays: number;
   roles: ApprovalLevelRoleRef[]; // read-only, empty for a not-yet-saved row
   approverCount: number;
@@ -43,6 +44,10 @@ export class CustomerApprovalLevelsComponent implements OnInit {
 
   readonly simAmount = signal<number | null>(null);
   readonly simResult = signal<ApprovalSimulation | null>(null);
+  // The *SIMULATE response's own levels (not rows()) — guaranteed in sync
+  // with simResult(), used only to look up each path step's passesUp flag
+  // for the sentence below.
+  readonly simLevels = signal<ApprovalLadder['levels']>([]);
   readonly simLoading = signal(false);
   readonly simError = signal<string | null>(null);
 
@@ -84,7 +89,7 @@ export class CustomerApprovalLevelsComponent implements OnInit {
           .map(l => ({
             levelId: l.levelId,
             maxAmount: l.maxAmount,
-            noLimit: l.maxAmount == null,
+            passesUp: l.passesUp === 'Y',
             escalationDays: l.escalationDays,
             roles: l.roles,
             approverCount: l.approverCount,
@@ -97,11 +102,16 @@ export class CustomerApprovalLevelsComponent implements OnInit {
     }
   }
 
-  // Preview-only "Over" figure for a row at this position — the server is
-  // the final authority once saved (minAmount isn't sent on *SYNC).
+  // Preview-only "Over" figure for a row at this position — the highest
+  // amount among rows above that actually have one (blank/passes-up rows
+  // don't count), 0 if none. The server is the final authority once saved
+  // (minAmount isn't sent on *SYNC).
   minAmountFor(index: number): number {
-    if (index === 0) return 0;
-    return this.rows()[index - 1].maxAmount ?? 0;
+    for (let i = index - 1; i >= 0; i--) {
+      const amt = this.rows()[i].maxAmount;
+      if (amt != null) return amt;
+    }
+    return 0;
   }
 
   isLastRow(index: number): boolean {
@@ -117,6 +127,14 @@ export class CustomerApprovalLevelsComponent implements OnInit {
     this.rows.update(rows => {
       const next = [...rows];
       next[index] = { ...next[index], maxAmount: amount };
+      return next;
+    });
+  }
+
+  onPassesUpChange(index: number, checked: boolean): void {
+    this.rows.update(rows => {
+      const next = [...rows];
+      next[index] = { ...next[index], passesUp: checked, maxAmount: checked ? null : next[index].maxAmount };
       return next;
     });
   }
@@ -137,7 +155,7 @@ export class CustomerApprovalLevelsComponent implements OnInit {
       const insertAt = Math.max(0, rows.length - 1);
       const prevAmount = insertAt > 0 ? (rows[insertAt - 1].maxAmount ?? 0) : 0;
       const newRow: LevelRow = {
-        levelId: 0, maxAmount: prevAmount, noLimit: false, escalationDays: 3, roles: [], approverCount: 0,
+        levelId: 0, maxAmount: prevAmount, passesUp: false, escalationDays: 3, roles: [], approverCount: 0,
       };
       const next = [...rows];
       next.splice(insertAt, 0, newRow);
@@ -233,7 +251,7 @@ export class CustomerApprovalLevelsComponent implements OnInit {
       const items: LevelSyncItem[] = this.rows().map((row, i) => ({
         levelId: row.levelId,
         levelNo: i + 1,
-        maxAmount: this.isLastRow(i) || row.noLimit ? 0 : (row.maxAmount ?? 0),
+        maxAmount: this.isLastRow(i) || row.passesUp ? 0 : (row.maxAmount ?? 0),
         escalationDays: row.escalationDays,
       }));
       await this.service.sync(tpId, custId, items);
@@ -257,6 +275,7 @@ export class CustomerApprovalLevelsComponent implements OnInit {
     try {
       const result = await this.service.simulate(tpId, custId, amount, 0);
       this.simResult.set(result.simulation ?? null);
+      this.simLevels.set(result.levels);
     } catch (err) {
       this.simError.set(err instanceof Error ? err.message : 'Failed to simulate.');
     } finally {
@@ -267,8 +286,10 @@ export class CustomerApprovalLevelsComponent implements OnInit {
   simulationSentence(): string {
     const sim = this.simResult();
     if (!sim) return '';
+    const passesUpByLevelId = new Map(this.simLevels().map(l => [l.levelId, l.passesUp === 'Y']));
     const steps = sim.path.map(s => {
       if (s.willSkip === 'Y') return `${s.roleNames ?? 'Level ' + s.levelNo} (skipped, nobody assigned)`;
+      if (passesUpByLevelId.get(s.levelId)) return `${s.roleNames ?? 'Level ' + s.levelNo} (${s.escalationDays}d, passes up)`;
       return `${s.roleNames ?? 'Level ' + s.levelNo} (${s.escalationDays}d)`;
     });
     const prefix = `A $${sim.amount.toFixed(2)} order needs: `;

@@ -5,13 +5,18 @@ export interface ApprovalLevelRoleRef {
   canApprove: 'Y' | 'N';
 }
 
-// minAmount is the level below's maxAmount (0 for level 1) — display only,
-// never sent back on *SYNC. maxAmount null = no limit (top level only).
+// minAmount is the highest amount on any level below this one that has one
+// (0 if none) — display only, never sent back on *SYNC.
+// maxAmount null + top level      -> final approval, any amount.
+// maxAmount null + below the top  -> "always passes up" (passesUp === 'Y').
+// Amounts only have to rise among levels that HAVE one — a blank level in
+// between doesn't break the ordering.
 export interface ApprovalLevel {
   levelId: number;
   levelNo: number;
   minAmount: number;
   maxAmount: number | null;
+  passesUp: 'Y' | 'N';
   escalationDays: number;
   approverCount: number;
   roles: ApprovalLevelRoleRef[];

@@ -96,6 +96,10 @@ export class CustomerRoleDetailComponent implements OnInit {
   // cross-customer role picker.
   readonly simAsThisRole = signal(true);
   readonly simResult = signal<ApprovalSimulation | null>(null);
+  // The *SIMULATE response's own levels (not the ladder's), guaranteed in
+  // sync with simResult() — used only to look up each path step's passesUp
+  // flag for the sentence below.
+  readonly simLevels = signal<ApprovalLevel[]>([]);
   readonly simLoading = signal(false);
   readonly simError = signal<string | null>(null);
 
@@ -610,14 +614,18 @@ export class CustomerRoleDetailComponent implements OnInit {
   }
 
   levelOptionLabel(level: ApprovalLevel): string {
-    const range = level.maxAmount == null
-      ? `over $${level.minAmount.toFixed(0)}, no limit`
-      : `over $${level.minAmount.toFixed(0)}, up to $${level.maxAmount.toFixed(0)}`;
+    const range = level.passesUp === 'Y'
+      ? 'always passes up'
+      : level.maxAmount == null
+        ? `over $${level.minAmount.toFixed(0)}, final approval any amount`
+        : `over $${level.minAmount.toFixed(0)}, up to $${level.maxAmount.toFixed(0)}`;
     return `Level ${level.levelNo} — ${range} · ${level.escalationDays} day${level.escalationDays === 1 ? '' : 's'}`;
   }
 
   levelRangeLabel(level: ApprovalLevel): string {
-    return level.maxAmount == null ? `$${level.minAmount.toFixed(0)}+` : `$${level.minAmount.toFixed(0)} – $${level.maxAmount.toFixed(0)}`;
+    if (level.passesUp === 'Y') return 'Always passes up';
+    if (level.maxAmount == null) return `$${level.minAmount.toFixed(0)}+ (final)`;
+    return `$${level.minAmount.toFixed(0)} – $${level.maxAmount.toFixed(0)}`;
   }
 
   levelRoleNames(level: ApprovalLevel): string {
@@ -643,6 +651,7 @@ export class CustomerRoleDetailComponent implements OnInit {
       const roleId = this.simAsThisRole() ? (this.roleId ?? 0) : 0;
       const result = await this.approvalLevelsService.simulate(tpId, custId, amount, roleId);
       this.simResult.set(result.simulation ?? null);
+      this.simLevels.set(result.levels);
     } catch (err) {
       this.simError.set(err instanceof Error ? err.message : 'Failed to simulate.');
     } finally {
@@ -653,8 +662,10 @@ export class CustomerRoleDetailComponent implements OnInit {
   simulationSentence(): string {
     const sim = this.simResult();
     if (!sim) return '';
+    const passesUpByLevelId = new Map(this.simLevels().map(l => [l.levelId, l.passesUp === 'Y']));
     const steps = sim.path.map(s => {
       if (s.willSkip === 'Y') return `${s.roleNames ?? 'Level ' + s.levelNo} (skipped, nobody assigned)`;
+      if (passesUpByLevelId.get(s.levelId)) return `${s.roleNames ?? 'Level ' + s.levelNo} (${s.escalationDays}d, passes up)`;
       return `${s.roleNames ?? 'Level ' + s.levelNo} (${s.escalationDays}d)`;
     });
     const prefix = `A $${sim.amount.toFixed(2)} order needs: `;
