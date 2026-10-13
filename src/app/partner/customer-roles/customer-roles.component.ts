@@ -20,12 +20,18 @@ interface RoleForm {
   canShopForOthers: 'Y' | 'N';
   canManageTeamBalances: 'Y' | 'N';
   allotExclTaxFreight: 'Y' | 'N';
+  requiresApproval: 'Y' | 'N';
+  // Not shown in this quick modal either (the approval level/override picker
+  // lives on the role detail page's Permissions tab, alongside Can approve)
+  // — carried through as-is so saving here never clears them.
+  canOverride: 'Y' | 'N';
+  approvalLevelId: number;
 }
 
 const BLANK_FORM: RoleForm = {
   roleName: '', accessLevel: 'EMPLOYEE', allotmentType: 'NONE', description: '', isActive: 'Y',
   canOrderSelf: 'Y', canApprove: 'N', canShopForOthers: 'N', canManageTeamBalances: 'N',
-  allotExclTaxFreight: 'N',
+  allotExclTaxFreight: 'N', requiresApproval: 'N', canOverride: 'N', approvalLevelId: 0,
 };
 
 @Component({
@@ -169,6 +175,9 @@ export class CustomerRolesComponent implements OnInit {
       description:   role.description ?? '',
       isActive:      role.isActive,
       allotExclTaxFreight: role.allotExclTaxFreight,
+      requiresApproval: role.requiresApproval,
+      canOverride: role.canOverride,
+      approvalLevelId: role.approvalLevelId ?? 0,
       // Carried through even though this modal doesn't show them — a save
       // here must not blank out permissions set on the role detail page.
       canOrderSelf:          role.canOrderSelf,
@@ -247,6 +256,12 @@ export class CustomerRolesComponent implements OnInit {
       case 'APPROVER': return 'badge border border-info-subtle text-info bg-info-subtle';
       default: return 'badge border bg-light text-dark';
     }
+  }
+
+  levelLabel(role: CustomerRole): string {
+    if (role.canOverride === 'Y') return 'Override';
+    if (role.approvalLevelNo != null) return `Level ${role.approvalLevelNo}`;
+    return '—';
   }
 
   statusBadge(active: string): string {

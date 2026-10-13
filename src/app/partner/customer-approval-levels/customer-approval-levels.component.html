@@ -1,0 +1,168 @@
+<section class="page-shell">
+
+  <div class="page-shell-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h1 class="page-title">Approval Levels</h1>
+      <p class="page-subtitle">Order approval ladder for <strong>{{ customerMode.activeCustomer()?.customerName }}</strong></p>
+    </div>
+    <button type="button" class="btn btn-dark" (click)="addLevel()" [disabled]="loading()">
+      <i class="bi bi-plus-lg me-2"></i>Add Level
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+      Loading…
+    </div>
+  } @else if (loadError()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mt-3" role="alert">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ loadError() }}</span>
+    </div>
+  } @else {
+
+    @if (warnings().length > 0) {
+      <div class="alert alert-warning mb-3">
+        @for (w of warnings(); track w) {
+          <div class="small"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ w }}</div>
+        }
+      </div>
+    }
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0 table-stacked">
+        <thead>
+          <tr>
+            <th style="width:70px;">Level</th>
+            <th>Over</th>
+            <th>Approves up to</th>
+            <th style="width:160px;">Escalation days</th>
+            <th>Roles at this level</th>
+            <th class="text-end" style="width:140px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (rows().length === 0) {
+            <tr><td colspan="6" class="text-center py-4 text-muted">
+              <i class="bi bi-diagram-3 me-2"></i>No approval levels — orders won't need level-based approval. Click "Add Level" to start a ladder.
+            </td></tr>
+          }
+          @for (row of rows(); track row.levelId + '-' + $index; let i = $index) {
+            <tr>
+              <td class="fw-semibold" data-label="Level">{{ i + 1 }}</td>
+              <td class="text-muted small" data-label="Over">${{ minAmountFor(i) }}</td>
+              <td data-label="Approves up to">
+                @if (isLastRow(i)) {
+                  <span class="badge bg-light text-dark border">No limit</span>
+                } @else {
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="input-group" style="max-width:160px;">
+                      <span class="input-group-text">$</span>
+                      <input type="number" min="0" step="1" class="form-control"
+                             [value]="row.maxAmount" (input)="onMaxAmountChange(i, $any($event.target).value)" />
+                    </div>
+                  </div>
+                }
+              </td>
+              <td data-label="Escalation days">
+                <input type="number" min="1" max="60" class="form-control" style="max-width:100px;"
+                       [value]="row.escalationDays" (input)="onEscalationDaysChange(i, $any($event.target).value)" />
+              </td>
+              <td class="small" data-label="Roles at this level">
+                {{ roleNamesFor(row) }}
+                @if (row.approverCount > 0) {
+                  <span class="badge bg-light text-dark border ms-1">{{ row.approverCount }} employee{{ row.approverCount === 1 ? '' : 's' }}</span>
+                }
+              </td>
+              <td class="text-end" data-label="Actions">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-2" [disabled]="i === 0" (click)="requestMoveUp(i)" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-secondary px-2" [disabled]="isLastRow(i)" (click)="requestMoveDown(i)" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-danger px-2" (click)="requestRemove(i)" title="Remove"><i class="bi bi-trash"></i></button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (overrideRoles().length > 0) {
+      <p class="text-muted small mt-2 mb-0">
+        <i class="bi bi-shield-check me-1"></i>
+        Override (Admin): {{ overrideRoles().length }} role(s) can approve any order at any stage, outside this ladder.
+      </p>
+    }
+
+    @if (saveError()) {
+      <div class="alert alert-danger d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i><span>{{ saveError() }}</span>
+      </div>
+    }
+
+    <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+      @if (saved()) {
+        <span class="text-success small"><i class="bi bi-check-circle-fill me-1"></i>Saved</span>
+      }
+      <button type="button" class="btn btn-dark" (click)="save()" [disabled]="saving()">
+        @if (saving()) {
+          <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving…
+        } @else {
+          <i class="bi bi-check-lg me-1"></i>Save levels
+        }
+      </button>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-body">
+        <h6 class="card-title fw-semibold mb-3">Test an order</h6>
+        <div class="d-flex flex-wrap align-items-end gap-2">
+          <div>
+            <label class="form-label small text-muted mb-1">Order amount</label>
+            <div class="input-group" style="max-width:160px;">
+              <span class="input-group-text">$</span>
+              <input type="number" min="0" step="0.01" class="form-control"
+                     [ngModel]="simAmount()" (ngModelChange)="simAmount.set($event)" />
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm mb-2" [disabled]="simLoading() || !simAmount()" (click)="runSimulation()">
+            @if (simLoading()) {
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            }
+            Test
+          </button>
+        </div>
+        @if (simError()) {
+          <div class="alert alert-danger d-flex align-items-center gap-2 mt-2 mb-0 py-2" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i><span>{{ simError() }}</span>
+          </div>
+        }
+        @if (simResult()) {
+          <p class="small mb-0 mt-2">{{ simulationSentence() }}</p>
+        }
+      </div>
+    </div>
+
+  }
+
+</section>
+
+<!-- Remove / Move Confirm Modal -->
+@if (confirmAction()) {
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2 text-warning"></i>{{ confirmTitle() }}</h5>
+          <button class="btn-close" (click)="cancelConfirm()"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <p class="mb-0">{{ confirmMessage() }}</p>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button class="btn btn-outline-secondary" (click)="cancelConfirm()">Cancel</button>
+          <button class="btn btn-dark" (click)="confirmProceed()">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

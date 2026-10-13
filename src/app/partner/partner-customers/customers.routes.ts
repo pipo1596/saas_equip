@@ -6,6 +6,7 @@ import { CustomerRolesComponent } from '../customer-roles/customer-roles.compone
 import { CustomerRoleDetailComponent } from '../customer-roles/customer-role-detail.component';
 import { CustomerAllotmentRuleEditorComponent } from '../customer-allotment-rules/customer-allotment-rule-editor.component';
 import { CustomerPaymentLedgersComponent } from '../customer-payment-ledgers/customer-payment-ledgers.component';
+import { CustomerApprovalLevelsComponent } from '../customer-approval-levels/customer-approval-levels.component';
 import { CustomerEmployeesComponent } from '../customer-employees/customer-employees.component';
 import { CustomerEmployeeFormComponent } from '../customer-employees/customer-employee-form.component';
 import { CustomerEmployeeAllotmentComponent } from '../customer-employee-allotments/customer-employee-allotment.component';
@@ -39,6 +40,7 @@ export const CUSTOMERS_ROUTES: Routes = [
   { path: ':customerId/roles/:roleId/rules/new', component: CustomerAllotmentRuleEditorComponent },
   { path: ':customerId/roles/:roleId/rules/:ruleId', component: CustomerAllotmentRuleEditorComponent },
   { path: ':customerId/payment-ledgers', component: CustomerPaymentLedgersComponent },
+  { path: ':customerId/approval-levels', component: CustomerApprovalLevelsComponent },
   { path: ':customerId/employees', component: CustomerEmployeesComponent },
   { path: ':customerId/employees/new', component: CustomerEmployeeFormComponent },
   { path: ':customerId/employees/:employeeId/edit', component: CustomerEmployeeFormComponent },

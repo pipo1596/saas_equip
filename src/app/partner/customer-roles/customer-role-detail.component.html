@@ -302,12 +302,123 @@
           </div>
         </div>
         <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
-          <span>Can approve orders in their queue</span>
+          <span>Can approve orders</span>
           <div class="form-check form-switch mb-0">
             <input class="form-check-input" type="checkbox" role="switch"
                    [checked]="permForm.canApprove === 'Y'" (change)="togglePerm('canApprove', $any($event.target).checked)" />
           </div>
         </div>
+
+        @if (permForm.canApprove === 'Y') {
+          <div class="border rounded-3 bg-light p-3 mb-3">
+
+            <div class="d-flex align-items-center justify-content-between py-1">
+              <div>
+                <div class="fw-medium">Override (Admin)</div>
+                <div class="text-muted small">Can approve any order at any stage. Their approval completes the order.</div>
+              </div>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       [checked]="permForm.canOverride === 'Y'" (change)="toggleOverride($any($event.target).checked)" />
+              </div>
+            </div>
+
+            @if (permForm.canOverride === 'N') {
+              <div class="mt-2">
+                <label class="form-label small fw-semibold text-uppercase text-muted">Approval level</label>
+                @if (ladderLoading()) {
+                  <div class="text-muted small"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Loading levels…</div>
+                } @else {
+                  <select class="form-select" style="max-width:420px;"
+                          [ngModel]="permForm.approvalLevelId" (ngModelChange)="onApprovalLevelChange($event)">
+                    <option [ngValue]="0">— None —</option>
+                    @for (lvl of sortedLevels; track lvl.levelId) {
+                      <option [ngValue]="lvl.levelId">{{ levelOptionLabel(lvl) }}</option>
+                    }
+                  </select>
+                }
+              </div>
+            }
+
+            @if (ladderError()) {
+              <div class="alert alert-warning d-flex align-items-center gap-2 mt-2 mb-0 py-2" role="alert">
+                <i class="bi bi-exclamation-triangle-fill"></i><span>{{ ladderError() }}</span>
+              </div>
+            }
+
+            @if (ladder(); as l) {
+              @if (l.warnings.length > 0) {
+                <div class="alert alert-warning mt-3 mb-0 py-2">
+                  @for (w of l.warnings; track w) {
+                    <div class="small"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ w }}</div>
+                  }
+                </div>
+              }
+
+              <div class="text-uppercase text-muted small fw-semibold mt-3 mb-2" style="font-size:.7rem; letter-spacing:.04em;">
+                Approval chain for this customer
+              </div>
+              <div class="d-flex flex-wrap align-items-stretch gap-2">
+                @for (lvl of sortedLevels; track lvl.levelId; let last = $last) {
+                  <div class="border rounded-3 bg-white px-3 py-2" style="min-width:150px;"
+                       [class.border-primary]="isCurrentLevel(lvl)" [style.borderWidth.px]="isCurrentLevel(lvl) ? 2 : 1">
+                    <div class="text-muted" style="font-size:.65rem; letter-spacing:.04em;">
+                      LEVEL {{ lvl.levelNo }}@if (isCurrentLevel(lvl)) { &nbsp;· THIS ROLE }
+                    </div>
+                    <div class="fw-semibold small">{{ levelRoleNames(lvl) }}</div>
+                    <div class="text-muted small">{{ levelRangeLabel(lvl) }}</div>
+                    <div class="text-muted small"><i class="bi bi-clock me-1"></i>{{ lvl.escalationDays }}d to approve</div>
+                  </div>
+                  @if (!last) {
+                    <div class="d-flex align-items-center text-muted"><i class="bi bi-arrow-right"></i></div>
+                  }
+                }
+              </div>
+
+              @if (l.overrideRoles.length > 0) {
+                <div class="d-flex align-items-center gap-2 mt-3 text-muted small">
+                  <span style="border-top:1px dashed #adb5bd; width:24px;"></span>
+                  <span>{{ overrideRoleNames(l) }} can approve any order at any stage. Their approval completes the order and skips the remaining levels.</span>
+                </div>
+              }
+
+              <div class="mt-4 pt-3 border-top">
+                <div class="text-uppercase text-muted small fw-semibold mb-2" style="font-size:.7rem; letter-spacing:.04em;">Test an order</div>
+                <div class="d-flex flex-wrap align-items-end gap-2">
+                  <div>
+                    <label class="form-label small text-muted mb-1">Order amount</label>
+                    <div class="input-group" style="max-width:160px;">
+                      <span class="input-group-text">$</span>
+                      <input type="number" min="0" step="0.01" class="form-control"
+                             [ngModel]="simAmount()" (ngModelChange)="simAmount.set($event)" />
+                    </div>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="simAsThisRole"
+                           [checked]="simAsThisRole()" (change)="simAsThisRole.set($any($event.target).checked)" />
+                    <label class="form-check-label small" for="simAsThisRole">Placed by this role</label>
+                  </div>
+                  <button type="button" class="btn btn-outline-secondary btn-sm mb-2" [disabled]="simLoading() || !simAmount()" (click)="runSimulation()">
+                    @if (simLoading()) {
+                      <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    Test
+                  </button>
+                </div>
+                @if (simError()) {
+                  <div class="alert alert-danger d-flex align-items-center gap-2 mt-2 mb-0 py-2" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i><span>{{ simError() }}</span>
+                  </div>
+                }
+                @if (simResult()) {
+                  <p class="small mb-0 mt-2">{{ simulationSentence() }}</p>
+                }
+              </div>
+            }
+
+          </div>
+        }
+
         <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
           <span>Can shop on behalf of employees (in-person clerk)</span>
           <div class="form-check form-switch mb-0">

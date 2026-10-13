@@ -36,17 +36,18 @@
           <th class="text-center">Access Level</th>
           <th class="text-center">Employees</th>
           <th class="text-center">Status</th>
+          <th>Level</th>
           <th class="text-center">Role Settings</th>
           <th class="text-end">Actions</th>
         </tr>
       </thead>
       <tbody>
         @if (loading()) {
-          <tr><td colspan="6" class="text-center py-4 text-muted">
+          <tr><td colspan="7" class="text-center py-4 text-muted">
             <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Loading…
           </td></tr>
         } @else if (roles().length === 0) {
-          <tr><td colspan="6" class="text-center py-4 text-muted">
+          <tr><td colspan="7" class="text-center py-4 text-muted">
             <i class="bi bi-shield-check me-2"></i>
             @if (search()) { No roles match your search. } @else { No roles yet. }
           </td></tr>
@@ -70,6 +71,7 @@
                    {{ role.isActive === 'Y' ? 'Active' : 'Inactive' }}
                 </span>
               </td>
+              <td class="small" data-label="Level">{{ levelLabel(role) }}</td>
               <td class="text-center">
                 <a class="btn btn-sm btn-outline-secondary px-3"
                    [routerLink]="['/partner', tpId, 'customers', customerId, 'roles', role.roleId]"
@@ -166,6 +168,16 @@
                          (ngModelChange)="form.allotExclTaxFreight = $event ? 'Y' : 'N'" name="allotExclTaxFreight" />
                   <label class="form-check-label" for="rf-exclTaxFreight">Exclude tax &amp; freight from allotment</label>
                 </div>
+              </div>
+
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input id="rf-requiresApproval" type="checkbox" role="switch" class="form-check-input"
+                         [ngModel]="form.requiresApproval === 'Y'"
+                         (ngModelChange)="form.requiresApproval = $event ? 'Y' : 'N'" name="requiresApproval" />
+                  <label class="form-check-label" for="rf-requiresApproval">Requires approval</label>
+                </div>
+                <span class="form-text">Orders placed by this role need approval. Set up who approves — levels and overrides — from this role's Permissions tab.</span>
               </div>
 
             </div>

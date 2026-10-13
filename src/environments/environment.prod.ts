@@ -36,5 +36,6 @@ export const environment = {
     customerPriceListItems: 'APITPCPRI',
     customerPrograms: 'APITPCPROG',
     customerProgramViews: 'APITPCPVW',
+    customerApprovalLevels: 'APITPCAPL',
   },
 };

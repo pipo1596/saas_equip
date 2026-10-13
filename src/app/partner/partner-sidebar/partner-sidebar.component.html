@@ -193,6 +193,15 @@
 
           <li class="nav-item">
             <a class="sidebar-nav-link"
+               [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'approval-levels']"
+               routerLinkActive="active">
+              <i class="bi bi-diagram-3 nav-icon"></i>
+              <span>Approval Levels</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="sidebar-nav-link"
                [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'employees']"
                routerLinkActive="active">
               <i class="bi bi-person-vcard nav-icon"></i>

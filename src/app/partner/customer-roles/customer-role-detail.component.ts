@@ -9,6 +9,8 @@ import { CustomerAllotmentRulesService } from '../customer-allotment-rules/custo
 import { CustomerAllotmentRule, RuleAssortmentScope, RuleLedgerSlot } from '../customer-allotment-rules/customer-allotment-rule.model';
 import { CustomerPaymentLedgersService } from '../customer-payment-ledgers/customer-payment-ledgers.service';
 import { CustomerPaymentLedger, CustomerPaymentLedgerForm } from '../customer-payment-ledgers/customer-payment-ledger.model';
+import { CustomerApprovalLevelsService } from '../customer-approval-levels/customer-approval-levels.service';
+import { ApprovalLadder, ApprovalLevel, ApprovalSimulation } from '../customer-approval-levels/customer-approval-level.model';
 
 type RoleDetailTab = 'rules' | 'ledgers' | 'permissions';
 
@@ -33,6 +35,7 @@ export class CustomerRoleDetailComponent implements OnInit {
   private readonly rolesService = inject(CustomerRolesService);
   private readonly rulesService = inject(CustomerAllotmentRulesService);
   private readonly ledgersService = inject(CustomerPaymentLedgersService);
+  private readonly approvalLevelsService = inject(CustomerApprovalLevelsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -72,9 +75,29 @@ export class CustomerRoleDetailComponent implements OnInit {
   readonly permSaving = signal(false);
   readonly permSaveError = signal<string | null>(null);
   readonly permSaved = signal(false);
-  permForm: { canOrderSelf: 'Y' | 'N'; canApprove: 'Y' | 'N'; canShopForOthers: 'Y' | 'N'; canManageTeamBalances: 'Y' | 'N' } = {
+  permForm: {
+    canOrderSelf: 'Y' | 'N'; canApprove: 'Y' | 'N'; canShopForOthers: 'Y' | 'N'; canManageTeamBalances: 'Y' | 'N';
+    canOverride: 'Y' | 'N'; approvalLevelId: number;
+  } = {
     canOrderSelf: 'Y', canApprove: 'N', canShopForOthers: 'N', canManageTeamBalances: 'N',
+    canOverride: 'N', approvalLevelId: 0,
   };
+
+  // Approval ladder (customer-wide), loaded lazily the first time the
+  // Permissions tab is opened — drives the level picker, the chain strip,
+  // and the "Test an order" panel.
+  readonly ladder = signal<ApprovalLadder | null>(null);
+  readonly ladderLoading = signal(false);
+  readonly ladderError = signal<string | null>(null);
+
+  readonly simAmount = signal<number | null>(null);
+  // Simplification: this page is already scoped to one role, so "placed by
+  // role" is either this role or no particular role (0) — not a full
+  // cross-customer role picker.
+  readonly simAsThisRole = signal(true);
+  readonly simResult = signal<ApprovalSimulation | null>(null);
+  readonly simLoading = signal(false);
+  readonly simError = signal<string | null>(null);
 
   protected get tpId(): number | undefined {
     return this.partnerMode.activePartner()?.tpId;
@@ -111,6 +134,7 @@ export class CustomerRoleDetailComponent implements OnInit {
     this.permForm = {
       canOrderSelf: role.canOrderSelf, canApprove: role.canApprove,
       canShopForOthers: role.canShopForOthers, canManageTeamBalances: role.canManageTeamBalances,
+      canOverride: role.canOverride, approvalLevelId: role.approvalLevelId ?? 0,
     };
   }
 
@@ -133,6 +157,7 @@ export class CustomerRoleDetailComponent implements OnInit {
     this.activeTab.set(tab);
     if (tab === 'rules' && this.rules().length === 0) this.loadRules();
     if (tab === 'ledgers' && this.ledgers().length === 0) this.loadLedgers();
+    if (tab === 'permissions' && this.ladder() === null) this.loadLadder();
   }
 
   // ── Allotment Rules tab ─────────────────────────────────────────────────
@@ -511,6 +536,23 @@ export class CustomerRoleDetailComponent implements OnInit {
 
   togglePerm(field: 'canOrderSelf' | 'canApprove' | 'canShopForOthers' | 'canManageTeamBalances', value: boolean): void {
     this.permForm[field] = value ? 'Y' : 'N';
+    // Turning Can approve off must also clear override/level in the same
+    // save — the server rejects a level/override set without canApprove.
+    if (field === 'canApprove' && !value) {
+      this.permForm.canOverride = 'N';
+      this.permForm.approvalLevelId = 0;
+    }
+  }
+
+  toggleOverride(value: boolean): void {
+    this.permForm.canOverride = value ? 'Y' : 'N';
+    // Override and a level are mutually exclusive — turning override on
+    // always clears the level picker.
+    if (value) this.permForm.approvalLevelId = 0;
+  }
+
+  onApprovalLevelChange(levelId: number): void {
+    this.permForm.approvalLevelId = levelId;
   }
 
   async savePermissions(): Promise<void> {
@@ -530,16 +572,94 @@ export class CustomerRoleDetailComponent implements OnInit {
         description: role.description ?? '',
         isActive: role.isActive,
         allotExclTaxFreight: role.allotExclTaxFreight,
+        requiresApproval: role.requiresApproval,
         ...this.permForm,
       };
       await this.rolesService.update(tpId, custId, roleId, payload);
-      this.role.update(r => r ? { ...r, ...this.permForm } : r);
       this.permSaved.set(true);
+      // approvalLevelNo is read-only/server-computed — refetch rather than
+      // merge permForm locally, so the chain strip highlights correctly.
+      await this.fetchRole(roleId);
       setTimeout(() => this.permSaved.set(false), 2500);
     } catch (err) {
       this.permSaveError.set(err instanceof Error ? err.message : 'Failed to save permissions.');
     } finally {
       this.permSaving.set(false);
     }
+  }
+
+  // ── Approval ladder (chain strip / level picker / simulate) ─────────────
+
+  async loadLadder(): Promise<void> {
+    const tpId = this.tpId;
+    const custId = this.customerId;
+    if (!tpId || !custId) return;
+    this.ladderLoading.set(true);
+    this.ladderError.set(null);
+    try {
+      this.ladder.set(await this.approvalLevelsService.list(tpId, custId));
+    } catch (err) {
+      this.ladderError.set(err instanceof Error ? err.message : 'Failed to load approval levels.');
+    } finally {
+      this.ladderLoading.set(false);
+    }
+  }
+
+  get sortedLevels(): ApprovalLevel[] {
+    return (this.ladder()?.levels ?? []).slice().sort((a, b) => a.levelNo - b.levelNo);
+  }
+
+  levelOptionLabel(level: ApprovalLevel): string {
+    const range = level.maxAmount == null
+      ? `over $${level.minAmount.toFixed(0)}, no limit`
+      : `over $${level.minAmount.toFixed(0)}, up to $${level.maxAmount.toFixed(0)}`;
+    return `Level ${level.levelNo} — ${range} · ${level.escalationDays} day${level.escalationDays === 1 ? '' : 's'}`;
+  }
+
+  levelRangeLabel(level: ApprovalLevel): string {
+    return level.maxAmount == null ? `$${level.minAmount.toFixed(0)}+` : `$${level.minAmount.toFixed(0)} – $${level.maxAmount.toFixed(0)}`;
+  }
+
+  levelRoleNames(level: ApprovalLevel): string {
+    return level.roles.length ? level.roles.map(r => r.roleName).join(', ') : 'No roles assigned';
+  }
+
+  overrideRoleNames(ladder: ApprovalLadder): string {
+    return ladder.overrideRoles.map(r => r.roleName).join(', ') || 'No roles';
+  }
+
+  isCurrentLevel(level: ApprovalLevel): boolean {
+    return this.permForm.canApprove === 'Y' && this.permForm.canOverride === 'N' && this.permForm.approvalLevelId === level.levelId;
+  }
+
+  async runSimulation(): Promise<void> {
+    const tpId = this.tpId;
+    const custId = this.customerId;
+    const amount = this.simAmount();
+    if (!tpId || !custId || !amount || amount <= 0) return;
+    this.simLoading.set(true);
+    this.simError.set(null);
+    try {
+      const roleId = this.simAsThisRole() ? (this.roleId ?? 0) : 0;
+      const result = await this.approvalLevelsService.simulate(tpId, custId, amount, roleId);
+      this.simResult.set(result.simulation ?? null);
+    } catch (err) {
+      this.simError.set(err instanceof Error ? err.message : 'Failed to simulate.');
+    } finally {
+      this.simLoading.set(false);
+    }
+  }
+
+  simulationSentence(): string {
+    const sim = this.simResult();
+    if (!sim) return '';
+    const steps = sim.path.map(s => {
+      if (s.willSkip === 'Y') return `${s.roleNames ?? 'Level ' + s.levelNo} (skipped, nobody assigned)`;
+      return `${s.roleNames ?? 'Level ' + s.levelNo} (${s.escalationDays}d)`;
+    });
+    const prefix = `A $${sim.amount.toFixed(2)} order needs: `;
+    if (sim.endsWith === 'NONE') return `${prefix}nobody can approve this order.`;
+    const suffix = sim.endsWith === 'OVERRIDE' ? ' → an administrator (override)' : '';
+    return `${prefix}${steps.join(' → ')}${suffix}.`;
   }
 }
