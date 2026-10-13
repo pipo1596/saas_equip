@@ -9,6 +9,7 @@ import { DataResidencyRegion } from '../../shared/data-residency.service';
 import { ImageUploadService } from '../../shared/image-upload.service';
 import { CustomerRolesService } from '../customer-roles/customer-roles.service';
 import { CustomerRole } from '../customer-roles/customer-role.model';
+import { CustomerEmployeesFilterStateService } from './customer-employees-filter-state.service';
 
 @Component({
   selector: 'app-customer-employees',
@@ -22,6 +23,7 @@ export class CustomerEmployeesComponent implements OnInit {
   private readonly service = inject(CustomerEmployeesService);
   private readonly imageUploadService = inject(ImageUploadService);
   private readonly rolesService = inject(CustomerRolesService);
+  private readonly filterState = inject(CustomerEmployeesFilterStateService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -90,9 +92,21 @@ export class CustomerEmployeesComponent implements OnInit {
     const tpId = this.tpId;
     const custId = this.customerId;
     if (tpId && custId) await this.customerMode.ensure(tpId, custId);
+    if (custId) this.restoreFilterState(custId);
     if (tpId) this.region.set(await this.service.regionFor(tpId));
     if (tpId && custId) this.loadRoleOptions(tpId, custId);
     this.loadEmployees();
+  }
+
+  private restoreFilterState(custId: number): void {
+    const saved = this.filterState.get(custId);
+    if (!saved) return;
+    this.page.set(saved.page);
+    this.pageSize.set(saved.pageSize);
+    this.search.set(saved.search);
+    this.roleFilter.set(saved.roleFilter);
+    this.hireFrom.set(saved.hireFrom);
+    this.hireTo.set(saved.hireTo);
   }
 
   private async loadRoleOptions(tpId: number, custId: number): Promise<void> {
@@ -101,10 +115,25 @@ export class CustomerEmployeesComponent implements OnInit {
     } catch { /* non-critical — role filter just shows no options */ }
   }
 
+  // Saves the current filter/page state immediately — called on every
+  // filter change (not just once loadEmployees() finishes its debounce), so
+  // navigating away a moment after typing a search (e.g. straight to "New
+  // Employee" before the 350ms debounce fires) doesn't lose the just-typed
+  // text.
+  private persistFilterState(): void {
+    const custId = this.customerId;
+    if (!custId) return;
+    this.filterState.set(custId, {
+      page: this.page(), pageSize: this.pageSize(), search: this.search(),
+      roleFilter: this.roleFilter(), hireFrom: this.hireFrom(), hireTo: this.hireTo(),
+    });
+  }
+
   async loadEmployees(): Promise<void> {
     const tpId = this.tpId;
     const custId = this.customerId;
     if (!tpId || !custId) return;
+    this.persistFilterState();
     this.loading.set(true);
     this.error.set(null);
     try {
@@ -166,6 +195,7 @@ export class CustomerEmployeesComponent implements OnInit {
 
   onSearchChange(value: string): void {
     this.search.set(value);
+    this.persistFilterState();
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => { this.page.set(1); this.loadEmployees(); }, 350);
   }
