@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { PartnerModeService } from '../partner-mode.service';
 import { CustomerModeService } from '../partner-customers/customer-mode.service';
 import { CustomerEmployeesService } from './customer-employees.service';
-import { CustomerEmployee } from './customer-employee.model';
+import { CustomerEmployee, ShopAsResult } from './customer-employee.model';
 import { DataResidencyRegion } from '../../shared/data-residency.service';
 import { ImageUploadService } from '../../shared/image-upload.service';
 import { CustomerRolesService } from '../customer-roles/customer-roles.service';
@@ -42,6 +42,16 @@ export class CustomerEmployeesComponent implements OnInit {
   readonly showDeleteModal = signal(false);
   readonly deleting = signal(false);
   readonly deleteTarget = signal<CustomerEmployee | null>(null);
+
+  readonly showShopAsModal = signal(false);
+  readonly shopAsTarget = signal<CustomerEmployee | null>(null);
+  readonly shopAsLoading = signal(false);
+  readonly shopAsError = signal<string | null>(null);
+  readonly shopAsToast = signal<string | null>(null);
+  // Set only when the browser blocked window.open() after a successful
+  // *SHOPAS call — lets the admin open the already-issued link with one
+  // more (manual, so never blocked) click instead of losing it.
+  readonly shopAsFallbackUrl = signal<string | null>(null);
 
   // Only one row's "+N more locations" popover open at a time — a floating
   // panel rather than an inline-expanding row, so it doesn't shift the page
@@ -280,6 +290,61 @@ export class CustomerEmployeesComponent implements OnInit {
       this.closeDeleteModal();
     } finally {
       this.deleting.set(false);
+    }
+  }
+
+  // ── Shop as ───────────────────────────────────────────────────────────────
+
+  openShopAsModal(employee: CustomerEmployee): void {
+    if (employee.status !== 'ACTIVE') return;
+    this.shopAsTarget.set(employee);
+    this.shopAsError.set(null);
+    this.shopAsFallbackUrl.set(null);
+    this.showShopAsModal.set(true);
+  }
+
+  closeShopAsModal(): void {
+    if (this.shopAsLoading()) return;
+    this.shopAsFallbackUrl.set(null);
+    this.showShopAsModal.set(false);
+    this.shopAsTarget.set(null);
+  }
+
+  async confirmShopAs(): Promise<void> {
+    const target = this.shopAsTarget();
+    const tpId = this.tpId;
+    const custId = this.customerId;
+    if (!target || !tpId || !custId) return;
+
+    this.shopAsLoading.set(true);
+    this.shopAsError.set(null);
+    this.shopAsFallbackUrl.set(null);
+    try {
+      const result: ShopAsResult = await this.service.shopAs(tpId, custId, target.empId);
+      if (!result.success || !result.url) {
+        this.shopAsError.set(result.message || 'Unable to open the portal.');
+        if (result.code === 'NFD') await this.loadEmployees();
+        return;
+      }
+      // Only ever opened once we have a real URL — a blocked attempt here
+      // (unlike one opened pre-emptively) means the browser genuinely
+      // blocked it, not that we closed a blank tab a moment later.
+      const win = window.open(result.url, '_blank', 'noopener');
+      if (win) {
+        this.showShopAsModal.set(false);
+        this.shopAsTarget.set(null);
+        this.shopAsToast.set('Portal opened in a new tab.');
+        setTimeout(() => this.shopAsToast.set(null), 4000);
+      } else {
+        // Keep the link available for one manual click — the single-use
+        // token hasn't been redeemed yet, just not auto-opened.
+        this.shopAsFallbackUrl.set(result.url);
+        this.shopAsError.set('Your browser blocked the pop-up. Use the link below to open the portal.');
+      }
+    } catch (err) {
+      this.shopAsError.set(err instanceof Error ? err.message : 'Unable to open the portal.');
+    } finally {
+      this.shopAsLoading.set(false);
     }
   }
 

@@ -56,3 +56,17 @@ export interface CustomerEmployeesPage {
   data: CustomerEmployee[];
   pagination: { totalRows: number; page: number; pageSize: number };
 }
+
+// *SHOPAS — returned as-is (not thrown as an Error like the other actions on
+// this service) so the caller can branch on `code` per the UI treatment
+// table, and so a failure's message reaches the UI without ever touching
+// `url`. The link is single-use and expires in 120s — never log, store, or
+// display it as text.
+export interface ShopAsResult {
+  success: boolean;
+  message: string;
+  code?: 'AUT' | 'NFD' | 'ERR' | 'BOP';
+  url?: string;
+  impId?: number;
+  expiresInSeconds?: number;
+}

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { PartnerModeService } from '../partner-mode.service';
 import { CustomerModeService } from '../partner-customers/customer-mode.service';
 import { CustomerEmployeesService } from './customer-employees.service';
-import { CustomerEmployee, CustomerEmployeeForm } from './customer-employee.model';
+import { CustomerEmployee, CustomerEmployeeForm, ShopAsResult } from './customer-employee.model';
 import { CustomerRolesService } from '../customer-roles/customer-roles.service';
 import { CustomerRole } from '../customer-roles/customer-role.model';
 
@@ -31,6 +31,15 @@ export class CustomerEmployeeFormComponent implements OnInit {
   readonly emailTouched = signal(false);
   readonly emailError = signal(false);
   readonly roles = signal<CustomerRole[]>([]);
+  // Kept alongside formData (which only copies the editable fields) so
+  // Shop As can check the employee's live status.
+  readonly employee = signal<CustomerEmployee | null>(null);
+
+  readonly showShopAsModal = signal(false);
+  readonly shopAsLoading = signal(false);
+  readonly shopAsError = signal<string | null>(null);
+  readonly shopAsToast = signal<string | null>(null);
+  readonly shopAsFallbackUrl = signal<string | null>(null);
 
   isEdit = false;
   empId: number | null = null;
@@ -95,6 +104,7 @@ export class CustomerEmployeeFormComponent implements OnInit {
   }
 
   private prefill(employee: CustomerEmployee): void {
+    this.employee.set(employee);
     this.formData = {
       locIds:         employee.locIds ?? [],
       empNum:         employee.empNum ?? '',
@@ -147,6 +157,62 @@ export class CustomerEmployeeFormComponent implements OnInit {
       this.error.set(err instanceof Error ? err.message : 'Save failed. Please try again.');
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  displayName(employee: CustomerEmployee): string {
+    const parts = [employee.firstName, employee.lastName].filter(Boolean);
+    return parts.length ? parts.join(' ') : '—';
+  }
+
+  // ── Shop as ───────────────────────────────────────────────────────────────
+
+  openShopAsModal(): void {
+    if (this.employee()?.status !== 'ACTIVE') return;
+    this.shopAsError.set(null);
+    this.shopAsFallbackUrl.set(null);
+    this.showShopAsModal.set(true);
+  }
+
+  closeShopAsModal(): void {
+    if (this.shopAsLoading()) return;
+    this.showShopAsModal.set(false);
+    this.shopAsFallbackUrl.set(null);
+  }
+
+  async confirmShopAs(): Promise<void> {
+    const target = this.employee();
+    const tpId = this.tpId;
+    if (!target || !tpId || !this.customerId) return;
+
+    this.shopAsLoading.set(true);
+    this.shopAsError.set(null);
+    this.shopAsFallbackUrl.set(null);
+    try {
+      const result: ShopAsResult = await this.service.shopAs(tpId, this.customerId, target.empId);
+      if (!result.success || !result.url) {
+        this.shopAsError.set(result.message || 'Unable to open the portal.');
+        if (result.code === 'NFD') {
+          this.router.navigate(['/partner', tpId, 'customers', this.customerId, 'employees']);
+        }
+        return;
+      }
+      // Only ever opened once we have a real URL — a blocked attempt here
+      // (unlike one opened pre-emptively) means the browser genuinely
+      // blocked it, not that we closed a blank tab a moment later.
+      const win = window.open(result.url, '_blank', 'noopener');
+      if (win) {
+        this.showShopAsModal.set(false);
+        this.shopAsToast.set('Portal opened in a new tab.');
+        setTimeout(() => this.shopAsToast.set(null), 4000);
+      } else {
+        this.shopAsFallbackUrl.set(result.url);
+        this.shopAsError.set('Your browser blocked the pop-up. Use the link below to open the portal.');
+      }
+    } catch (err) {
+      this.shopAsError.set(err instanceof Error ? err.message : 'Unable to open the portal.');
+    } finally {
+      this.shopAsLoading.set(false);
     }
   }
 }

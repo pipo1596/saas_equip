@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { repairCp1252MojibakeDeep, decodeWindows1252Text } from '../../shared/cp1252-mojibake.util';
 import { DataResidencyService, DataResidencyRegion } from '../../shared/data-residency.service';
-import { CustomerEmployee, CustomerEmployeeForm, CustomerEmployeesPage } from './customer-employee.model';
+import { CustomerEmployee, CustomerEmployeeForm, CustomerEmployeesPage, ShopAsResult } from './customer-employee.model';
 
 @Injectable({ providedIn: 'root' })
 export class CustomerEmployeesService {
@@ -61,6 +61,22 @@ export class CustomerEmployeesService {
 
   async inductFromCsv(tpId: number, csvUrl: string): Promise<void> {
     await this.post(tpId, { action: '*INDUCT', tpId, csvUrl });
+  }
+
+  // Returns the raw result instead of throwing on failure — the caller
+  // branches on `code` (AUT/NFD/ERR/BOP) per the UI treatment table, and a
+  // failure here is a normal, expected outcome (e.g. someone else just
+  // changed the employee's status), not an exceptional one.
+  async shopAs(tpId: number, custId: number, empId: number): Promise<ShopAsResult> {
+    const endpoint = await this.endpointFor(tpId);
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: '*SHOPAS', empId, custId, tpId }),
+      credentials: 'include',
+    });
+    const data = await this.parseJson(response);
+    return data as unknown as ShopAsResult;
   }
 
   // Two IBM i programs serve the same TP_CUST_EMPLOYEES data, split by the
