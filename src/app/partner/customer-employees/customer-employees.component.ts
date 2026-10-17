@@ -339,7 +339,6 @@ export class CustomerEmployeesComponent implements OnInit {
         // Keep the link available for one manual click — the single-use
         // token hasn't been redeemed yet, just not auto-opened.
         this.shopAsFallbackUrl.set(result.url);
-        this.shopAsError.set('Your browser blocked the pop-up. Use the link below to open the portal.');
       }
     } catch (err) {
       this.shopAsError.set(err instanceof Error ? err.message : 'Unable to open the portal.');

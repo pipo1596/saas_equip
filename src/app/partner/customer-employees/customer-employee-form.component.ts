@@ -207,7 +207,6 @@ export class CustomerEmployeeFormComponent implements OnInit {
         setTimeout(() => this.shopAsToast.set(null), 4000);
       } else {
         this.shopAsFallbackUrl.set(result.url);
-        this.shopAsError.set('Your browser blocked the pop-up. Use the link below to open the portal.');
       }
     } catch (err) {
       this.shopAsError.set(err instanceof Error ? err.message : 'Unable to open the portal.');
