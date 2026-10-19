@@ -19,7 +19,7 @@ const BLANK_FORM: CustomerAllotmentRuleForm = {
   scopeAllAssortments: 'Y', renewalBasis: 'FIXED', renewalPeriodMonths: 12, renewalTime: '00:00:00',
   hireDaysOffset: null, cycleStartDate: new Date().toISOString().slice(0, 10), expirationDate: null,
   onExpirationAction: 'SUSPEND', carryoverType: 'FORFEIT', carryoverPct: null,
-  autoCreateNewEmp: 'Y', prorateMidCycle: 'Y', notifyNewCycle: 'Y', notifyLowBalance: 'Y', notifyCarryover: 'N',
+  autoCreateNewEmp: 'Y', prorateMidCycle: 'N', notifyNewCycle: 'Y', notifyLowBalance: 'Y', notifyCarryover: 'N',
   requireApproval: 'N', allowCcFallback: 'Y',
 };
 
