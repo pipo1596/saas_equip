@@ -296,7 +296,7 @@ export class CustomerEmployeesComponent implements OnInit {
   // ── Shop as ───────────────────────────────────────────────────────────────
 
   openShopAsModal(employee: CustomerEmployee): void {
-    if (employee.status !== 'ACTIVE') return;
+    if (employee.status !== 'ACTIVE' || !employee.locations.length) return;
     this.shopAsTarget.set(employee);
     this.shopAsError.set(null);
     this.shopAsFallbackUrl.set(null);

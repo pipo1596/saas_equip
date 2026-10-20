@@ -168,7 +168,8 @@ export class CustomerEmployeeFormComponent implements OnInit {
   // ── Shop as ───────────────────────────────────────────────────────────────
 
   openShopAsModal(): void {
-    if (this.employee()?.status !== 'ACTIVE') return;
+    const target = this.employee();
+    if (!target || target.status !== 'ACTIVE' || !target.locations.length) return;
     this.shopAsError.set(null);
     this.shopAsFallbackUrl.set(null);
     this.showShopAsModal.set(true);

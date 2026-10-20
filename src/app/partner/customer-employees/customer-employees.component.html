@@ -225,8 +225,8 @@
               </td>
               <td class="text-end">
                 <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="openShopAsModal(employee)"
-                        [disabled]="employee.status !== 'ACTIVE'"
-                        [title]="employee.status === 'ACTIVE' ? 'Shop as this employee' : 'Only active employees can be shopped for'">
+                        [disabled]="employee.status !== 'ACTIVE' || !employee.locations.length"
+                        [title]="employee.status !== 'ACTIVE' ? 'Only active employees can be shopped for' : !employee.locations.length ? 'Employee has no locations assigned' : 'Shop as this employee'">
                   <i class="bi bi-bag-check"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="editEmployee(employee)" title="Edit"><i class="bi bi-pencil"></i></button>

@@ -8,8 +8,8 @@
       <div class="d-flex align-items-center gap-2">
         @if (isEdit && employee()) {
           <button class="btn btn-outline-dark" type="button" (click)="openShopAsModal()"
-                  [disabled]="employee()!.status !== 'ACTIVE'"
-                  [title]="employee()!.status === 'ACTIVE' ? 'Shop as this employee' : 'Only active employees can be shopped for'">
+                  [disabled]="employee()!.status !== 'ACTIVE' || !employee()!.locations.length"
+                  [title]="employee()!.status !== 'ACTIVE' ? 'Only active employees can be shopped for' : !employee()!.locations.length ? 'Employee has no locations assigned' : 'Shop as this employee'">
             <i class="bi bi-bag-check me-1"></i>Shop as
           </button>
         }
