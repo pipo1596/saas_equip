@@ -54,7 +54,7 @@
                     <span class="text-muted text-truncate">{{ b.categoryName }}</span>
                     <span class="fw-medium text-nowrap">
                       {{ b.remaining }} / {{ b.total }}
-                      <span class="text-muted fw-normal">· {{ unitUsedAdjLabel(r) }}</span>
+                      <span class="text-muted fw-normal">· {{ unitRowUsedAdjLabel(b) }}</span>
                     </span>
                   </div>
                 }
@@ -249,7 +249,7 @@
                             [ngModel]="adjustForm.progCatId" (ngModelChange)="onAdjustCategoryChange($event)" name="progCatId">
                       <option [ngValue]="null">— Select a category —</option>
                       @for (c of scopeFor(rule.ruleId); track c.progCatId) {
-                        <option [ngValue]="c.progCatId">{{ c.programName }}: {{ c.categoryName }}</option>
+                        <option [ngValue]="c.progCatId">{{ c.programName }}: {{ categoryPathLabel(c.progCatId, c.categoryName) }}</option>
                       }
                     </select>
                     <div class="invalid-feedback">A category is required for a unit adjustment.</div>
@@ -275,8 +275,9 @@
                     <span class="input-group-text">$</span>
                   }
                   <input type="number" [min]="adjustForm.amountType === 'UNITS' ? 1 : 0.01" [step]="adjustForm.amountType === 'UNITS' ? 1 : 0.01"
+                         [max]="maxUnitDebit()"
                          class="form-control"
-                         [class.is-invalid]="adjustSubmitted() && !(adjustForm.amount > 0)"
+                         [class.is-invalid]="adjustSubmitted() && (!(adjustForm.amount > 0) || (maxUnitDebit() != null && adjustForm.amount > maxUnitDebit()!))"
                          [(ngModel)]="adjustForm.amount" name="amount" />
                   @if (adjustForm.amountType === 'POINTS') {
                     <span class="input-group-text">pts</span>
@@ -285,7 +286,11 @@
                     <span class="input-group-text">units</span>
                   }
                 </div>
-                <div class="invalid-feedback">Amount must be greater than 0.</div>
+                @if (maxUnitDebit() != null && adjustSubmitted() && adjustForm.amount > maxUnitDebit()!) {
+                  <div class="invalid-feedback d-block">Adjustment would take the unit balance below zero. Only {{ maxUnitDebit() }} available.</div>
+                } @else {
+                  <div class="invalid-feedback">Amount must be greater than 0.</div>
+                }
               </div>
               <div class="col-12">
                 <label class="form-label small fw-semibold text-uppercase text-muted">Reason</label>

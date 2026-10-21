@@ -9,8 +9,10 @@ import { CustomerAllotmentRulesService } from '../customer-allotment-rules/custo
 import {
   CustomerAllotmentRule, RuleAssortmentScope, RuleLedgerSlot, RuleQuotaLimit,
 } from '../customer-allotment-rules/customer-allotment-rule.model';
+import { CustomerProgramsService } from '../customer-programs/customer-programs.service';
+import { CustomerProgramCategoryNode } from '../customer-programs/customer-program.model';
 import { EmployeeAllotmentsService } from './employee-allotments.service';
-import { EmployeeAllotmentAdjustmentForm, EmployeeAllotmentBalance, EmployeeAllotmentTransaction } from './employee-allotment.model';
+import { EmployeeAllotmentAdjustmentForm, EmployeeAllotmentBalance, EmployeeAllotmentTransaction, EmployeeUnitBalance } from './employee-allotment.model';
 
 const BLANK_ADJUST_FORM: EmployeeAllotmentAdjustmentForm = {
   direction: 'CREDIT', amountType: 'DOLLARS', amount: 0, reason: '', programId: null, progCatId: null,
@@ -30,6 +32,7 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
   private readonly employeesService = inject(CustomerEmployeesService);
   private readonly rulesService = inject(CustomerAllotmentRulesService);
   private readonly allotmentsService = inject(EmployeeAllotmentsService);
+  private readonly programsService = inject(CustomerProgramsService);
   private readonly route = inject(ActivatedRoute);
 
   readonly employee = signal<CustomerEmployee | null>(null);
@@ -43,6 +46,12 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
   // Unit-type rules need their scope's unitQty totals loaded up front (not
   // lazily) since the collapsed row's "X of Y units" line depends on it.
   readonly ruleScopes = signal<Record<number, RuleAssortmentScope[]>>({});
+
+  // Full "Parent > Child" breadcrumb per progCatId, resolved from each unit
+  // rule's own program category tree — same approach as the rule editor's
+  // Scope/Quota Limits sections, duplicated here rather than shared (this
+  // codebase's convention for per-component display helpers).
+  readonly categoryPathLookup = signal<Record<number, string>>({});
 
   // Ledger chain / quota limits are only shown once a row is expanded, so
   // they're fetched lazily and cached per ruleId — same pattern as the
@@ -123,6 +132,8 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
 
       const unitRules = rules.filter(r => r.allotType === 'UNITS');
       await this.loadScopesFor(unitRules, roleId);
+      const programIds = Array.from(new Set(unitRules.flatMap(r => (this.ruleScopes()[r.ruleId] ?? []).map(s => s.programId))));
+      await this.loadCategoryPaths(programIds);
     } catch (err) {
       this.loadError.set(err instanceof Error ? err.message : 'Failed to load allotment summary.');
     } finally {
@@ -144,6 +155,42 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     const map = { ...this.ruleScopes() };
     entries.forEach(([id, scope]) => { map[id] = scope; });
     this.ruleScopes.set(map);
+  }
+
+  // Resolves the full "Parent > Child" breadcrumb for every category in the
+  // given assortments and merges it into categoryPathLookup, so unit rows
+  // and their transaction history can show the full path instead of just
+  // the leaf category's own name.
+  private async loadCategoryPaths(programIds: number[]): Promise<void> {
+    const tpId = this.tpId;
+    const custId = this.customerId;
+    if (!tpId || !custId || programIds.length === 0) return;
+    const lookup = { ...this.categoryPathLookup() };
+    await Promise.all(programIds.map(async programId => {
+      try {
+        const tree = await this.programsService.getTree(tpId, custId, programId);
+        this.flattenCategories(tree.categories).forEach(c => { lookup[c.progCatId] = c.label; });
+      } catch {
+        // Leave unresolved — falls back to the category's own name.
+      }
+    }));
+    this.categoryPathLookup.set(lookup);
+  }
+
+  private flattenCategories(
+    nodes: CustomerProgramCategoryNode[], parentPath = '',
+  ): { progCatId: number; label: string }[] {
+    const out: { progCatId: number; label: string }[] = [];
+    for (const n of nodes) {
+      const label = parentPath ? `${parentPath} > ${n.categoryName}` : n.categoryName;
+      out.push({ progCatId: n.progCatId, label });
+      out.push(...this.flattenCategories(n.children, label));
+    }
+    return out;
+  }
+
+  categoryPathLabel(progCatId: number, fallback: string): string {
+    return this.categoryPathLookup()[progCatId] ?? fallback;
   }
 
   // ── Rule / balance matching ──────────────────────────────────────────────
@@ -176,34 +223,32 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     return (this.ruleScopes()[ruleId] ?? []).reduce((sum, s) => sum + (s.unitQty ?? 0), 0);
   }
 
-  // Per-category remaining/total for a UNITS rule, instead of one number
-  // lumped across every category in scope. Caveat: TP_EMP_UNIT_BALANCES
-  // tracks remaining units by programId, not progCatId (it predates the
-  // category-level scope recat on the rule side), so if two scoped
-  // categories share the same program, they'll show the same remaining
-  // figure — this reflects what the balance data actually distinguishes,
-  // not a true per-category split in that case.
-  unitBreakdown(rule: CustomerAllotmentRule): { progCatId: number; categoryName: string; remaining: number; total: number }[] {
-    const remainingByProgram = new Map<number, number>();
-    (this.balanceFor(rule.ruleId)?.unitBalances ?? []).forEach(u => remainingByProgram.set(u.programId, u.unitBalance));
-    return this.scopeFor(rule.ruleId).map(s => ({
-      progCatId: s.progCatId,
-      categoryName: s.categoryName,
-      remaining: remainingByProgram.get(s.programId) ?? 0,
-      total: s.unitQty ?? 0,
-    }));
+  // Per-category remaining/total/used/adjustment for a UNITS rule, instead
+  // of one number lumped across every category in scope. Each unit grant
+  // (progCatId) now has its own balance, matched directly rather than
+  // inferred from a shared program.
+  unitBreakdown(rule: CustomerAllotmentRule): {
+    progCatId: number; categoryName: string; remaining: number; total: number; used: number; adjustment: number;
+  }[] {
+    const balanceByCategory = new Map<number, EmployeeUnitBalance>();
+    (this.balanceFor(rule.ruleId)?.unitBalances ?? []).forEach(u => balanceByCategory.set(u.progCatId, u));
+    return this.scopeFor(rule.ruleId).map(s => {
+      const bal = balanceByCategory.get(s.progCatId);
+      return {
+        progCatId: s.progCatId,
+        categoryName: this.categoryPathLabel(s.progCatId, s.categoryName),
+        remaining: bal?.unitBalance ?? 0,
+        total: s.unitQty ?? 0,
+        used: bal?.usedUnits ?? 0,
+        adjustment: bal?.adjustmentUnits ?? 0,
+      };
+    });
   }
 
-  // Used/adjusted units, for display next to each category row in the unit
-  // breakdown. These are the rule's single aggregate figures (the balance
-  // row doesn't break used/adjustment out per category) — every row shows
-  // the same rule-level numbers, same caveat as unitBreakdown() above.
-  unitUsedAdjLabel(rule: CustomerAllotmentRule): string {
-    const balance = this.balanceFor(rule.ruleId);
-    if (!balance) return '';
-    const amt = balance.adjustmentAmount;
-    const sign = amt > 0 ? '+' : amt < 0 ? '-' : '';
-    return `Used ${balance.usedAmount} · Adj ${sign}${Math.abs(amt)}`;
+  // Used/adjusted units for one category row in the unit breakdown.
+  unitRowUsedAdjLabel(row: { used: number; adjustment: number }): string {
+    const sign = row.adjustment > 0 ? '+' : row.adjustment < 0 ? '-' : '';
+    return `Used ${row.used} · Adj ${sign}${Math.abs(row.adjustment)}`;
   }
 
   // Primary remaining/total pair driving the progress bar — dollars for
@@ -374,6 +419,18 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     this.adjustForm.programId = scope?.programId ?? null;
   }
 
+  // Client-side guard only — the backend still enforces this per assortment
+  // ("Adjustment would take the unit balance below zero"). Returns null
+  // when the cap doesn't apply (not a UNITS debit, or no category picked
+  // yet), rather than 0, so callers don't mistake "no cap" for "cap of 0".
+  maxUnitDebit(): number | null {
+    if (this.adjustForm.amountType !== 'UNITS' || this.adjustForm.direction !== 'DEBIT') return null;
+    const rule = this.adjustTarget();
+    if (!rule || this.adjustForm.progCatId == null) return null;
+    const bal = (this.balanceFor(rule.ruleId)?.unitBalances ?? []).find(u => u.progCatId === this.adjustForm.progCatId);
+    return bal?.unitBalance ?? 0;
+  }
+
   async saveAdjustment(): Promise<void> {
     const tpId = this.tpId;
     const custId = this.customerId;
@@ -384,6 +441,8 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     this.adjustSubmitted.set(true);
     if (!this.adjustForm.amount || this.adjustForm.amount <= 0 || !this.adjustForm.reason.trim()) return;
     if (this.adjustForm.amountType === 'UNITS' && this.adjustForm.progCatId == null) return;
+    const maxDebit = this.maxUnitDebit();
+    if (maxDebit != null && this.adjustForm.amount > maxDebit) return;
 
     this.adjustSaving.set(true);
     this.adjustError.set(null);
@@ -494,12 +553,17 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     return this.rules().find(r => r.ruleId === ruleId)?.ruleName ?? `Rule #${ruleId}`;
   }
 
-  // Category label for a UNITS-type transaction's progCatId — '—' for
-  // non-UNITS transactions (progCatId is null) or if the category can't be
-  // resolved from the rule's own scope.
+  // Category label for a transaction row. DOLLARS/POINTS rows never carry a
+  // category. A UNITS row with no progCatId is a legacy renewal/adjustment
+  // written before per-assortment tracking, shown as "All assortments"
+  // rather than resolved to a specific one.
   categoryNameFor(txn: EmployeeAllotmentTransaction): string {
-    if (txn.progCatId == null) return '—';
-    return this.scopeFor(txn.ruleId).find(s => s.progCatId === txn.progCatId)?.categoryName ?? '—';
+    if (txn.amountType !== 'UNITS') return '—';
+    if (txn.progCatId == null) return 'All assortments';
+    return this.categoryPathLabel(
+      txn.progCatId,
+      txn.categoryName ?? this.scopeFor(txn.ruleId).find(s => s.progCatId === txn.progCatId)?.categoryName ?? '—',
+    );
   }
 
   // The API returns a signed amount (negative = debit, positive = credit)

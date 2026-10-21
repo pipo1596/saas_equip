@@ -1,11 +1,18 @@
-// Remaining units for one assortment (program). NOTE: per the DDL as given,
-// TP_EMP_UNIT_BALANCES still keys on PROGRAM_ID — this predates (or wasn't
-// updated for) the later TP_CUST_RULE_UNIT_QTY recat that rekeyed the
-// rule-side table to PROG_CAT_ID. Flagged for confirmation; using
-// programId here to match the literal DDL.
+// Remaining units for one assortment grant — one entry per rule unit grant
+// (progCatId), not one per program. A rule's category-level scope can place
+// several grants under the same program, and each now carries its own
+// balance.
 export interface EmployeeUnitBalance {
   programId: number;
+  programName: string;
+  progCatId: number;
+  categoryName: string;
+  grantedUnits: number;
+  usedUnits: number;
+  adjustmentUnits: number;
   unitBalance: number;
+  pendingUnits: number;
+  availableUnits: number;
 }
 
 // One row per employee, per rule, per cycle — the LIVE state checkout
@@ -33,11 +40,9 @@ export interface EmployeeAllotmentBalance {
 // ADJUSTMENT transaction's amount is always a positive magnitude with the
 // direction otherwise left to "context", so this is an explicit field the
 // backend can map to whatever TXN_TYPE/sign convention it actually persists.
-// programId/progCatId are only populated for a UNITS adjustment — unit
-// balances are tracked per assortment (TP_EMP_UNIT_BALANCES.PROGRAM_ID), and
-// progCatId is carried along as the rule-scope category the adjustment was
-// made against, matching TP_EMP_ALLOTMENT_TRANSACTIONS' own PROGRAM_ID +
-// PROG_CAT_ID columns for a UNITS-type entry.
+// progCatId is required for a UNITS adjustment — unit balances are tracked
+// per assortment grant, not per program. programId is optional there (the
+// backend derives it from progCatId) and ignored for DOLLARS/POINTS.
 export interface EmployeeAllotmentAdjustmentForm {
   direction: 'CREDIT' | 'DEBIT';
   amountType: 'DOLLARS' | 'POINTS' | 'UNITS';
@@ -63,8 +68,13 @@ export interface EmployeeAllotmentTransaction {
   amount: number;
   // Only populated for a UNITS-type entry — the rule-scope category this
   // transaction was recorded against (mirrors TP_EMP_ALLOTMENT_TRANSACTIONS'
-  // own PROG_CAT_ID column for that case).
+  // own PROG_CAT_ID column for that case). Null on a DOLLARS/POINTS row, and
+  // also null on a UNITS row written before per-assortment tracking — those
+  // legacy rows display as "All assortments" rather than a resolved name.
   progCatId: number | null;
+  // The category's own name (not the full breadcrumb) — null wherever
+  // progCatId is null, for the same two reasons.
+  categoryName: string | null;
   reason: string | null;
   createdBy: string | null;
 }
