@@ -606,10 +606,14 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     return txn.amountType === 'UNITS' && txn.progCatId == null;
   }
 
-  // The API returns a signed amount (negative = debit, positive = credit)
-  // despite the DDL's "always a positive magnitude" note — confirmed
-  // against real responses. Direction is derived purely from that sign.
+  // For most types the API returns a signed amount (negative = debit,
+  // positive = credit) despite the DDL's "always a positive magnitude" note
+  // — confirmed against real responses. An order's DEBIT row is the
+  // exception: it comes back as a plain positive magnitude per the DDL, so
+  // sign alone would misread it as a credit. txnType is unambiguous for
+  // that case, so it's trusted over the sign there.
   private effectiveDirection(txn: EmployeeAllotmentTransaction): 'CREDIT' | 'DEBIT' {
+    if (txn.txnType === 'DEBIT') return 'DEBIT';
     return txn.amount < 0 ? 'DEBIT' : 'CREDIT';
   }
 
