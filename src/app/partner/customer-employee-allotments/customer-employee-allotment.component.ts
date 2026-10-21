@@ -223,12 +223,14 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     return (this.ruleScopes()[ruleId] ?? []).reduce((sum, s) => sum + (s.unitQty ?? 0), 0);
   }
 
-  // Per-category remaining/total/used/adjustment for a UNITS rule, instead
+  // Per-category remaining/used/adjustment/pending for a UNITS rule, instead
   // of one number lumped across every category in scope. Each unit grant
   // (progCatId) now has its own balance, matched directly rather than
-  // inferred from a shared program.
+  // inferred from a shared program. No separate "total" here — Used/Adj
+  // next to remaining already explain it, and remaining equals the granted
+  // total whenever neither has moved.
   unitBreakdown(rule: CustomerAllotmentRule): {
-    progCatId: number; categoryName: string; remaining: number; total: number; used: number; adjustment: number;
+    progCatId: number; categoryName: string; remaining: number; used: number; adjustment: number; pending: number;
   }[] {
     const balanceByCategory = new Map<number, EmployeeUnitBalance>();
     (this.balanceFor(rule.ruleId)?.unitBalances ?? []).forEach(u => balanceByCategory.set(u.progCatId, u));
@@ -238,9 +240,9 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
         progCatId: s.progCatId,
         categoryName: this.categoryPathLabel(s.progCatId, s.categoryName),
         remaining: bal?.unitBalance ?? 0,
-        total: s.unitQty ?? 0,
         used: bal?.usedUnits ?? 0,
         adjustment: bal?.adjustmentUnits ?? 0,
+        pending: bal?.pendingUnits ?? 0,
       };
     });
   }
@@ -249,6 +251,36 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
   unitRowUsedAdjLabel(row: { used: number; adjustment: number }): string {
     const sign = row.adjustment > 0 ? '+' : row.adjustment < 0 ? '-' : '';
     return `Used ${row.used} · Adj ${sign}${Math.abs(row.adjustment)}`;
+  }
+
+  // Shared red/green treatment for any "used" figure (rule-level or
+  // per-category) — nonzero usage draws down a balance, same as a debit.
+  usedClass(used: number): string {
+    return used > 0 ? 'text-danger' : '';
+  }
+
+  // Shared red/green treatment for any signed adjustment figure — a credit
+  // adjustment is green, a debit (negative) adjustment is red.
+  adjustmentClass(amount: number): string {
+    return amount > 0 ? 'text-success' : amount < 0 ? 'text-danger' : '';
+  }
+
+  signedAmountLabel(amount: number): string {
+    const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
+    return `${sign}${Math.abs(amount)}`;
+  }
+
+  // Rule-level counterparts of usedClass/adjustmentClass, for the collapsed
+  // row's Used/Adj. summary columns (shared across all allotment types, not
+  // just UNITS).
+  ruleUsedClass(rule: CustomerAllotmentRule): string {
+    const balance = this.balanceFor(rule.ruleId);
+    return balance ? this.usedClass(balance.usedAmount) : '';
+  }
+
+  ruleAdjustmentClass(rule: CustomerAllotmentRule): string {
+    const balance = this.balanceFor(rule.ruleId);
+    return balance ? this.adjustmentClass(balance.adjustmentAmount) : '';
   }
 
   // Primary remaining/total pair driving the progress bar — dollars for
@@ -566,6 +598,14 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     );
   }
 
+  // True only for the legacy case categoryNameFor() labels "All
+  // assortments" — a UNITS row written before per-assortment tracking, not
+  // an actual assortment someone chose. Lets the template style it apart
+  // from a real resolved category name.
+  isLegacyUnitCategory(txn: EmployeeAllotmentTransaction): boolean {
+    return txn.amountType === 'UNITS' && txn.progCatId == null;
+  }
+
   // The API returns a signed amount (negative = debit, positive = credit)
   // despite the DDL's "always a positive magnitude" note — confirmed
   // against real responses. Direction is derived purely from that sign.
@@ -579,6 +619,10 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     const sign = this.effectiveDirection(txn) === 'CREDIT' ? '+' : '-';
     const abs = Math.abs(txn.amount);
     return `${sign}${prefix}${abs.toFixed(txn.amountType === 'DOLLARS' ? 2 : 0)}${suffix}`;
+  }
+
+  transactionAmountClass(txn: EmployeeAllotmentTransaction): string {
+    return this.effectiveDirection(txn) === 'CREDIT' ? 'text-success fw-medium' : 'text-danger fw-medium';
   }
 
   transactionTypeBadge(txn: EmployeeAllotmentTransaction): string {

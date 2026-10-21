@@ -53,8 +53,14 @@
                   <div class="d-flex justify-content-between gap-2 small">
                     <span class="text-muted text-truncate">{{ b.categoryName }}</span>
                     <span class="fw-medium text-nowrap">
-                      {{ b.remaining }} / {{ b.total }}
-                      <span class="text-muted fw-normal">· {{ unitRowUsedAdjLabel(b) }}</span>
+                      {{ b.remaining }}
+                      <span class="text-muted fw-normal">
+                        · <span [class]="usedClass(b.used)">Used {{ b.used }}</span>
+                        · <span [class]="adjustmentClass(b.adjustment)">Adj {{ signedAmountLabel(b.adjustment) }}</span>
+                        @if (b.pending > 0) {
+                          · {{ b.pending }} pending
+                        }
+                      </span>
                     </span>
                   </div>
                 }
@@ -72,12 +78,12 @@
 
           <div style="min-width:80px;">
             <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Used</div>
-            <div class="fw-medium">{{ usedLabel(r) }}</div>
+            <div class="fw-medium" [class]="ruleUsedClass(r)">{{ usedLabel(r) }}</div>
           </div>
 
           <div style="min-width:80px;">
             <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Adj.</div>
-            <div class="fw-medium">{{ adjustmentLabel(r) }}</div>
+            <div class="fw-medium" [class]="ruleAdjustmentClass(r)">{{ adjustmentLabel(r) }}</div>
           </div>
 
           <div style="min-width:100px;">
@@ -209,8 +215,14 @@
                 <tr>
                   <td class="small" data-label="Date">{{ formatDate(txn.createdTs.slice(0, 10)) }}</td>
                   <td data-label="Type"><span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span></td>
-                  <td class="small" data-label="Category">{{ categoryNameFor(txn) }}</td>
-                  <td class="small" data-label="Amount">{{ transactionAmountLabel(txn) }}</td>
+                  <td class="small" data-label="Category">
+                    @if (isLegacyUnitCategory(txn)) {
+                      <span class="text-muted fst-italic" title="Recorded before per-assortment tracking">{{ categoryNameFor(txn) }}</span>
+                    } @else {
+                      {{ categoryNameFor(txn) }}
+                    }
+                  </td>
+                  <td class="small" [class]="transactionAmountClass(txn)" data-label="Amount">{{ transactionAmountLabel(txn) }}</td>
                   <td class="small" data-label="Reason">{{ txn.reason || '—' }}</td>
                   <td class="small" data-label="By">{{ txn.createdBy || '—' }}</td>
                 </tr>
