@@ -17,12 +17,20 @@ export class CustomerEmployeesService {
     roleId?: number | null; hireFrom?: string; hireTo?: string;
   }): Promise<CustomerEmployeesPage> {
     const data = await this.post(tpId, { action: '*LIST', tpId, custId, ...params });
-    return data as unknown as CustomerEmployeesPage;
+    const page = data as unknown as CustomerEmployeesPage;
+    return { ...page, data: (page.data ?? []).map(e => this.normalizeEmployee(e)) };
   }
 
   async listAll(tpId: number, custId: number): Promise<CustomerEmployee[]> {
     const data = await this.post(tpId, { action: '*LIST_ALL', tpId, custId });
-    return this.parseListData<CustomerEmployee>(data['data']);
+    return this.parseListData<CustomerEmployee>(data['data']).map(e => this.normalizeEmployee(e));
+  }
+
+  // Some employee rows come back without `locations`/`locIds` at all (seen
+  // on *GET for at least some employees) rather than an empty array —
+  // normalized here so every caller can rely on them always being arrays.
+  private normalizeEmployee(employee: CustomerEmployee): CustomerEmployee {
+    return { ...employee, locations: employee.locations ?? [], locIds: employee.locIds ?? [] };
   }
 
   // Defensive against the double-JSON-encoding quirk seen elsewhere in this
@@ -43,12 +51,12 @@ export class CustomerEmployeesService {
 
   async get(tpId: number, custId: number, empId: number): Promise<CustomerEmployee> {
     const data = await this.post(tpId, { action: '*GET', tpId, custId, empId });
-    return data as unknown as CustomerEmployee;
+    return this.normalizeEmployee(data as unknown as CustomerEmployee);
   }
 
   async create(tpId: number, custId: number, form: CustomerEmployeeForm): Promise<CustomerEmployee> {
     const data = await this.post(tpId, { action: '*CREATE', tpId, custId, ...form });
-    return data['employee'] as unknown as CustomerEmployee;
+    return this.normalizeEmployee(data['employee'] as unknown as CustomerEmployee);
   }
 
   async update(tpId: number, custId: number, empId: number, form: CustomerEmployeeForm): Promise<void> {
