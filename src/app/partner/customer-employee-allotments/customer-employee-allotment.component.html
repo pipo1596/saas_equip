@@ -76,15 +76,17 @@
             }
           </div>
 
-          <div style="min-width:80px;">
-            <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Used</div>
-            <div class="fw-medium" [class]="ruleUsedClass(r)">{{ usedLabel(r) }}</div>
-          </div>
+          @if (r.allotType !== 'UNITS') {
+            <div style="min-width:80px;">
+              <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Used</div>
+              <div class="fw-medium" [class]="ruleUsedClass(r)">{{ usedLabel(r) }}</div>
+            </div>
 
-          <div style="min-width:80px;">
-            <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Adj.</div>
-            <div class="fw-medium" [class]="ruleAdjustmentClass(r)">{{ adjustmentLabel(r) }}</div>
-          </div>
+            <div style="min-width:80px;">
+              <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Adj.</div>
+              <div class="fw-medium" [class]="ruleAdjustmentClass(r)">{{ adjustmentLabel(r) }}</div>
+            </div>
+          }
 
           <div style="min-width:100px;">
             <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Renews</div>
