@@ -130,8 +130,13 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
       this.balances.set(balances);
       this.transactions.set(transactions);
 
+      // Every category-scoped rule needs its scope up front, not just UNITS
+      // ones — the collapsed row's subtitle ("Cap +3 more · renews...")
+      // reads it for DOLLAR/POINTS rules too, and previously only loaded it
+      // lazily on expand, showing "No categories" until then.
       const unitRules = rules.filter(r => r.allotType === 'UNITS');
-      await this.loadScopesFor(unitRules, roleId);
+      const scopedRules = rules.filter(r => r.scopeAllAssortments === 'N' || r.allotType === 'UNITS');
+      await this.loadScopesFor(scopedRules, roleId);
       const programIds = Array.from(new Set(unitRules.flatMap(r => (this.ruleScopes()[r.ruleId] ?? []).map(s => s.programId))));
       await this.loadCategoryPaths(programIds);
     } catch (err) {
