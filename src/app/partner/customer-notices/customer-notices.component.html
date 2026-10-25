@@ -1,0 +1,160 @@
+<section class="page-shell">
+
+  <div class="page-shell-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h1 class="page-title">Home Page Notices</h1>
+      <p class="page-subtitle">
+        Banners shown at the top of the storefront home page for <strong>{{ customerMode.activeCustomer()?.customerName }}</strong>.
+        Toggle <strong>Show on home</strong> to publish or hide a notice; ended notices stay in the shopper's announcement archive.
+      </p>
+    </div>
+    <a class="btn btn-dark" [routerLink]="['/partner', tpId, 'customers', customerId, 'notices', 'new']">
+      <i class="bi bi-plus-lg me-2"></i>New notice
+    </a>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ error() }}</span>
+      <button class="btn-close ms-auto" (click)="error.set(null)"></button>
+    </div>
+  }
+  @if (toggleError()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ toggleError() }}</span>
+      <button class="btn-close ms-auto" (click)="toggleError.set(null)"></button>
+    </div>
+  }
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h6 class="text-uppercase text-muted fw-semibold mb-2" style="font-size:.7rem; letter-spacing:.04em;">Shoppers see right now</h6>
+      @if (liveNotice(); as live) {
+        <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap p-3 rounded-3" style="background:#eef4fb; border:1px solid #c9dbf0;">
+          <span class="d-flex align-items-center gap-2">
+            <i class="bi bi-megaphone text-primary"></i>
+            {{ live.bannerMessage }}
+          </span>
+          <span class="text-primary fw-medium">{{ live.linkText || linkTargetLabel(live) }}</span>
+        </div>
+      } @else {
+        <p class="text-muted small mb-0 p-3 rounded-3 border" style="border-style:dashed !important;">
+          No notice is showing. The home page banner area is hidden.
+        </p>
+      }
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+    <div role="tablist" aria-label="Filter notices" class="btn-group">
+      <button type="button" class="btn btn-sm" [class.btn-dark]="activeTab() === 'all'" [class.btn-outline-secondary]="activeTab() !== 'all'" (click)="setTab('all')">All {{ counts().all }}</button>
+      <button type="button" class="btn btn-sm" [class.btn-dark]="activeTab() === 'live'" [class.btn-outline-secondary]="activeTab() !== 'live'" (click)="setTab('live')">Live {{ counts().live }}</button>
+      <button type="button" class="btn btn-sm" [class.btn-dark]="activeTab() === 'scheduled'" [class.btn-outline-secondary]="activeTab() !== 'scheduled'" (click)="setTab('scheduled')">Scheduled {{ counts().scheduled }}</button>
+      <button type="button" class="btn btn-sm" [class.btn-dark]="activeTab() === 'hidden'" [class.btn-outline-secondary]="activeTab() !== 'hidden'" (click)="setTab('hidden')">Hidden {{ counts().hidden }}</button>
+      <button type="button" class="btn btn-sm" [class.btn-dark]="activeTab() === 'ended'" [class.btn-outline-secondary]="activeTab() !== 'ended'" (click)="setTab('ended')">Ended {{ counts().ended }}</button>
+    </div>
+    <div class="input-group" style="max-width: 300px;">
+      <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+      <input type="text" class="form-control border-start-0 ps-0" placeholder="Search notices…"
+             [ngModel]="search()" (ngModelChange)="search.set($event)" />
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stacked">
+      <thead>
+        <tr>
+          <th style="width:110px;">Show on home</th>
+          <th>Notice</th>
+          <th>Audience</th>
+          <th>Links to</th>
+          <th>Schedule</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="7" class="text-center py-4 text-muted">
+            <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Loading…
+          </td></tr>
+        } @else if (filteredNotices().length === 0) {
+          <tr><td colspan="7" class="text-center py-4 text-muted">
+            <i class="bi bi-megaphone me-2"></i>
+            @if (search()) { No notices match your search. } @else { No notices in this tab. }
+          </td></tr>
+        } @else {
+          @for (n of filteredNotices(); track n.noticeId) {
+            <tr>
+              <td data-label="Show on home">
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" role="switch"
+                         [checked]="n.showOnHome === 'Y'" [disabled]="isToggling(n.noticeId)"
+                         [attr.aria-label]="'Show “' + n.internalTitle + '” on home page'"
+                         (change)="toggleShowOnHome(n)" />
+                </div>
+              </td>
+              <td data-label="Notice" style="max-width:320px;">
+                <div class="fw-semibold">{{ n.internalTitle }}</div>
+                <div class="text-muted small">{{ n.bannerMessage }}</div>
+              </td>
+              <td data-label="Audience" class="small">{{ audienceLabel(n) }}</td>
+              <td data-label="Links to">
+                <div>{{ n.linkText || '—' }}</div>
+                <div class="text-muted small">{{ linkTargetLabel(n) }}</div>
+              </td>
+              <td data-label="Schedule" class="small text-nowrap">{{ scheduleLabel(n) }}</td>
+              <td data-label="Status"><span [class]="statusBadge(n.displayStatus)">{{ n.displayStatus | titlecase }}</span></td>
+              <td class="text-end" data-label="Actions">
+                <a class="btn btn-sm btn-outline-secondary m-1 px-3"
+                   [routerLink]="['/partner', tpId, 'customers', customerId, 'notices', n.noticeId, 'edit']"
+                   [title]="'Edit ' + n.internalTitle">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <button class="btn btn-sm btn-outline-danger m-1 px-3" (click)="openDeleteModal(n)" title="Delete"><i class="bi bi-trash"></i></button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (!loading() && filteredNotices().length > 0) {
+    <p class="small text-muted mt-3 mb-0">
+      Showing {{ filteredNotices().length }} of {{ counts().all }} notices.
+      When several notices are live for the same shopper, the one with the highest priority shows.
+    </p>
+  }
+
+</section>
+
+<!-- Delete Modal -->
+@if (showDeleteModal()) {
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Notice</h5>
+          <button class="btn-close" (click)="closeDeleteModal()" [disabled]="deleting()"></button>
+        </div>
+        <div class="modal-body pt-2">
+          @if (deleteTarget(); as target) {
+            <p class="mb-0">
+              Delete notice <strong>{{ target.internalTitle }}</strong>? This also removes it from the shopper's announcement
+              archive and cannot be undone. To keep it archived, hide it with the <strong>Show on home</strong> switch instead.
+            </p>
+          }
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button class="btn btn-outline-secondary" (click)="closeDeleteModal()" [disabled]="deleting()">Cancel</button>
+          <button class="btn btn-danger" (click)="confirmDelete()" [disabled]="deleting()">
+            @if (deleting()) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting… }
+            @else { <i class="bi bi-trash me-2"></i>Delete }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

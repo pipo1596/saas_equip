@@ -22,6 +22,8 @@ import { CustomerProgramsComponent } from '../customer-programs/customer-program
 import { CustomerProgramFormComponent } from '../customer-programs/customer-program-form.component';
 import { CustomerProgramTreeComponent } from '../customer-programs/customer-program-tree.component';
 import { CustomerProgramViewsComponent } from '../customer-program-views/customer-program-views.component';
+import { CustomerNoticesComponent } from '../customer-notices/customer-notices.component';
+import { CustomerNoticeEditorComponent } from '../customer-notices/customer-notice-editor.component';
 
 // All routes are relative to partner/:id/customers
 export const CUSTOMERS_ROUTES: Routes = [
@@ -41,6 +43,9 @@ export const CUSTOMERS_ROUTES: Routes = [
   { path: ':customerId/roles/:roleId/rules/:ruleId', component: CustomerAllotmentRuleEditorComponent },
   { path: ':customerId/payment-ledgers', component: CustomerPaymentLedgersComponent },
   { path: ':customerId/approval-levels', component: CustomerApprovalLevelsComponent },
+  { path: ':customerId/notices', component: CustomerNoticesComponent },
+  { path: ':customerId/notices/new', component: CustomerNoticeEditorComponent },
+  { path: ':customerId/notices/:noticeId/edit', component: CustomerNoticeEditorComponent },
   { path: ':customerId/employees', component: CustomerEmployeesComponent },
   { path: ':customerId/employees/new', component: CustomerEmployeeFormComponent },
   { path: ':customerId/employees/:employeeId/edit', component: CustomerEmployeeFormComponent },

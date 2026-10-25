@@ -254,6 +254,15 @@
             </a>
           </li>
 
+          <li class="nav-item">
+            <a class="sidebar-nav-link"
+               [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'notices']"
+               routerLinkActive="active">
+              <i class="bi bi-megaphone nav-icon"></i>
+              <span>Home Page Notices</span>
+            </a>
+          </li>
+
         </ul>
 
         <button class="partner-settings-back-btn mt-2" type="button" (click)="exitCustomerMode()">

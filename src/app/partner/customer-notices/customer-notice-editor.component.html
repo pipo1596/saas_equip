@@ -1,0 +1,318 @@
+<section class="page-shell">
+
+  <div class="page-shell-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <a class="text-decoration-none small text-muted d-inline-block mb-1"
+         [routerLink]="['/partner', tpId, 'customers', customerId, 'notices']">
+        <i class="bi bi-arrow-left me-1"></i>Home page notices
+      </a>
+      <h1 class="page-title mb-0 d-flex align-items-center gap-2">
+        {{ isEdit ? 'Edit notice' : 'New notice' }}
+        @if (notice(); as n) {
+          <span [class]="statusBadge(n.displayStatus)">{{ n.displayStatus }}</span>
+        }
+      </h1>
+    </div>
+    @if (!loading()) {
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-secondary" (click)="cancel()" [disabled]="saving()">Cancel</button>
+        <button type="button" class="btn btn-outline-dark" (click)="saveDraft()" [disabled]="saving()">
+          @if (saving()) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> }
+          Save as draft
+        </button>
+        <button type="button" class="btn btn-dark" (click)="savePublish()" [disabled]="saving()">
+          @if (saving()) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> }
+          Save &amp; publish
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+      Loading…
+    </div>
+  } @else if (loadError()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mt-3" role="alert">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ loadError() }}</span>
+    </div>
+  } @else {
+
+  @if (saveError()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3" role="alert">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ saveError() }}</span>
+    </div>
+  }
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+
+      <!-- Home page banner -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">Home page banner</h6>
+
+          <div class="d-flex align-items-center justify-content-between gap-3 p-3 mb-3 rounded-3 bg-light">
+            <div>
+              <div class="fw-medium">Show on home page</div>
+              <div class="text-muted small">Off hides the banner immediately; the announcement stays in the archive.</div>
+            </div>
+            <div class="form-check form-switch mb-0 flex-shrink-0">
+              <input class="form-check-input" type="checkbox" role="switch"
+                     [ngModel]="form.showOnHome === 'Y'" (ngModelChange)="form.showOnHome = $event ? 'Y' : 'N'" name="showOnHome" />
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-medium">Internal title <span class="text-danger">*</span></label>
+              <input id="nf-internalTitle" type="text" class="form-control" maxlength="150"
+                     [class.is-invalid]="submitted() && !form.internalTitle.trim()"
+                     [(ngModel)]="form.internalTitle" name="internalTitle" placeholder="e.g. 2026 station-boot policy" />
+              <div class="invalid-feedback">Internal title is required.</div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-medium">Banner message <span class="text-danger">*</span></label>
+              <textarea id="nf-bannerMessage" class="form-control" rows="2" maxlength="140"
+                        [class.is-invalid]="submitted() && !form.bannerMessage.trim()"
+                        [(ngModel)]="form.bannerMessage" name="bannerMessage"></textarea>
+              <div class="invalid-feedback">Banner message is required.</div>
+              <div class="form-text text-end">{{ form.bannerMessage.length }} / 140 characters</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Link text</label>
+              <input type="text" class="form-control" maxlength="60" [disabled]="form.linkType === 'NONE'"
+                     [(ngModel)]="form.linkText" name="linkText" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Style</label>
+              <select class="form-select" [(ngModel)]="form.bannerStyle" name="bannerStyle">
+                <option value="INFO">Information (blue)</option>
+                <option value="IMPORTANT">Important (amber)</option>
+                <option value="URGENT">Urgent (red)</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label fw-medium d-block mb-2">Link takes the shopper to</label>
+              <div class="d-flex flex-column gap-2">
+                <label class="d-flex gap-2 align-items-start p-2 border rounded-3" [class.border-primary]="form.linkType === 'ANNOUNCE'">
+                  <input type="radio" class="mt-1" name="linkType" value="ANNOUNCE" [(ngModel)]="form.linkType" (ngModelChange)="onLinkTypeChange()" />
+                  <span><strong>Announcement page</strong><br><span class="text-muted small">Opens the Announcements archive with this item selected.</span></span>
+                </label>
+                <label class="d-flex gap-2 align-items-start p-2 border rounded-3" [class.border-primary]="form.linkType === 'CATEGORY'">
+                  <input type="radio" class="mt-1" name="linkType" value="CATEGORY" [(ngModel)]="form.linkType" (ngModelChange)="onLinkTypeChange()" />
+                  <span class="flex-grow-1">
+                    <strong>Catalog category</strong><br><span class="text-muted small">Pick from the customer’s approved catalog.</span>
+                    @if (form.linkType === 'CATEGORY') {
+                      <select class="form-select mt-2" [(ngModel)]="form.linkProgCatId" name="linkProgCatId" (click)="$event.stopPropagation()">
+                        <option [ngValue]="0">— Select a category —</option>
+                        @for (c of catalogCategories(); track c.progCatId) {
+                          <option [ngValue]="c.progCatId">{{ c.programName }}: {{ c.label }}</option>
+                        }
+                      </select>
+                    }
+                  </span>
+                </label>
+                <label class="d-flex gap-2 align-items-start p-2 border rounded-3" [class.border-primary]="form.linkType === 'PRODUCT'">
+                  <input type="radio" class="mt-1" name="linkType" value="PRODUCT" [(ngModel)]="form.linkType" (ngModelChange)="onLinkTypeChange()" />
+                  <span class="flex-grow-1">
+                    <strong>Product</strong><br><span class="text-muted small">Pick a specific product from the catalog.</span>
+                    @if (form.linkType === 'PRODUCT') {
+                      <select class="form-select mt-2" [(ngModel)]="form.linkProductPk" name="linkProductPk" (click)="$event.stopPropagation()">
+                        <option [ngValue]="0">— Select a product —</option>
+                        @for (p of catalogProducts(); track p.productPk) {
+                          <option [ngValue]="p.productPk">{{ p.programName }}: {{ p.label }}</option>
+                        }
+                      </select>
+                    }
+                  </span>
+                </label>
+                <label class="d-flex gap-2 align-items-start p-2 border rounded-3" [class.border-primary]="form.linkType === 'EXTERNAL'">
+                  <input type="radio" class="mt-1" name="linkType" value="EXTERNAL" [(ngModel)]="form.linkType" (ngModelChange)="onLinkTypeChange()" />
+                  <span class="flex-grow-1">
+                    <strong>External URL</strong><br><span class="text-muted small">Opens in a new tab.</span>
+                    @if (form.linkType === 'EXTERNAL') {
+                      <input type="url" class="form-control mt-2" maxlength="500" placeholder="https://…"
+                             [(ngModel)]="form.linkUrl" name="linkUrl" (click)="$event.stopPropagation()" />
+                    }
+                  </span>
+                </label>
+                <label class="d-flex gap-2 align-items-start p-2 border rounded-3" [class.border-primary]="form.linkType === 'NONE'">
+                  <input type="radio" class="mt-1" name="linkType" value="NONE" [(ngModel)]="form.linkType" (ngModelChange)="onLinkTypeChange()" />
+                  <span><strong>No link</strong></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full announcement -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-0">Full announcement</h6>
+          <p class="text-muted small mb-3">Shown on the shopper’s Announcements page.</p>
+
+          <div class="row g-3 mb-3">
+            <div class="col-12">
+              <label class="form-label fw-medium">Headline</label>
+              <input type="text" class="form-control" maxlength="200" [(ngModel)]="form.headline" name="headline" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Category</label>
+              <select class="form-select" [(ngModel)]="form.category" name="category">
+                <option value="Policy">Policy</option>
+                <option value="Ordering">Ordering</option>
+                <option value="Catalog">Catalog</option>
+                <option value="Allotment">Allotment</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-medium">Posted by</label>
+              <input type="text" class="form-control" maxlength="150" [(ngModel)]="form.postedBy" name="postedBy" />
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <label class="form-label fw-medium mb-0">Body</label>
+            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size:.75rem;" (click)="toggleHtmlSource()">
+              <i class="bi bi-code-slash me-1"></i>{{ htmlSourceMode() ? 'Editor' : 'HTML' }}
+            </button>
+          </div>
+          @if (htmlSourceMode()) {
+            <textarea class="form-control font-monospace" style="height:220px; font-size:.78rem; white-space:pre;"
+                      [(ngModel)]="form.body" name="body_src"></textarea>
+          } @else {
+            <quill-editor
+              [(ngModel)]="form.body"
+              name="body"
+              [modules]="editorModules"
+              [styles]="{ height: '220px' }"
+              placeholder="Full announcement text…"
+              (onEditorCreated)="onEditorCreated($event, bodyCharCount)"
+              (onContentChanged)="onContentChanged($event, bodyCharCount)"
+            ></quill-editor>
+          }
+          <div class="text-end small mt-1" [ngClass]="bodyCharCount() >= maxBodyLength ? 'text-danger' : 'text-muted'">
+            {{ bodyCharCount() | number }} / {{ maxBodyLength | number }}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="col-lg-4">
+
+      <!-- Who sees it -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">Who sees it</h6>
+
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="form-label fw-medium mb-0">Departments</span>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="nf-allLocations"
+                     [ngModel]="form.allLocations === 'Y'" (ngModelChange)="form.allLocations = $event ? 'Y' : 'N'" name="allLocations" />
+              <label class="form-check-label small text-muted" for="nf-allLocations">All departments</label>
+            </div>
+          </div>
+          @if (form.allLocations === 'N') {
+            <div class="d-flex flex-column gap-1 mb-3" style="max-height:220px; overflow-y:auto;">
+              @if (allLocationOptions().length === 0) {
+                <p class="text-muted small mb-0">No departments found.</p>
+              }
+              @for (loc of allLocationOptions(); track loc.locId) {
+                <label class="d-flex align-items-center gap-2 small">
+                  <input type="checkbox" [checked]="isLocationSelected(loc.locId)" (change)="toggleLocation(loc)" />
+                  {{ loc.locName }}
+                </label>
+              }
+            </div>
+          }
+
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="form-label fw-medium mb-0">Allotment groups</span>
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="nf-allRules"
+                     [ngModel]="form.allRules === 'Y'" (ngModelChange)="form.allRules = $event ? 'Y' : 'N'" name="allRules" />
+              <label class="form-check-label small text-muted" for="nf-allRules">All allotments</label>
+            </div>
+          </div>
+          @if (form.allRules === 'N') {
+            <div class="d-flex flex-column gap-1" style="max-height:220px; overflow-y:auto;">
+              @if (allotmentGroupOptions().length === 0) {
+                <p class="text-muted small mb-0">No allotment rules found.</p>
+              }
+              @for (rule of allotmentGroupOptions(); track rule.ruleId) {
+                <label class="d-flex align-items-center gap-2 small">
+                  <input type="checkbox" [checked]="isRuleSelected(rule.ruleId)" (change)="toggleRule(rule)" />
+                  {{ rule.ruleName }}
+                </label>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-3">Schedule</h6>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-medium">Starts</label>
+              <input type="date" class="form-control" [(ngModel)]="startDate" name="startDate" />
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-medium">Ends <span class="text-muted fw-normal">(optional)</span></label>
+              <input type="date" class="form-control" [(ngModel)]="endDate" name="endDate" />
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-medium">Priority</label>
+              <input type="number" min="0" class="form-control" [(ngModel)]="form.priority" name="priority" />
+              <div class="form-text">Higher shows first when more than one notice is live.</div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="nf-keepInArchive"
+                       [ngModel]="form.keepInArchive === 'Y'" (ngModelChange)="form.keepInArchive = $event ? 'Y' : 'N'" name="keepInArchive" />
+                <label class="form-check-label" for="nf-keepInArchive">Keep in announcement archive after it ends</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-2">Preview on home page</h6>
+          <div class="d-flex align-items-center justify-content-between gap-2 p-3 rounded-3 flex-wrap" style="background:#eef4fb; border:1px solid #c9dbf0; font-size:.85rem;">
+            <span class="d-flex align-items-start gap-2">
+              <i class="bi bi-megaphone text-primary mt-1"></i>
+              {{ form.bannerMessage || 'Banner message preview…' }}
+            </span>
+            @if (form.linkType !== 'NONE' && form.linkText) {
+              <span class="text-primary fw-medium">{{ form.linkText }}</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (notice(); as n) {
+        <p class="text-muted small px-1">
+          Created by {{ n.createdBy || '—' }}<br>
+          Last updated by {{ n.updatedBy || '—' }}
+        </p>
+      }
+
+    </div>
+  </div>
+
+  }
+
+</section>
