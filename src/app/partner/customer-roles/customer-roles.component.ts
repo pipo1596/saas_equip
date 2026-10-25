@@ -22,16 +22,18 @@ interface RoleForm {
   allotExclTaxFreight: 'Y' | 'N';
   requiresApproval: 'Y' | 'N';
   // Not shown in this quick modal either (the approval level/override picker
-  // lives on the role detail page's Permissions tab, alongside Can approve)
-  // — carried through as-is so saving here never clears them.
+  // and the credit-card-overage flag live on the role detail page's
+  // Permissions tab, alongside Can approve) — carried through as-is so
+  // saving here never clears them.
   canOverride: 'Y' | 'N';
   approvalLevelId: number;
+  allowCcOverage: 'Y' | 'N';
 }
 
 const BLANK_FORM: RoleForm = {
   roleName: '', accessLevel: 'EMPLOYEE', allotmentType: 'NONE', description: '', isActive: 'Y',
   canOrderSelf: 'Y', canApprove: 'N', canShopForOthers: 'N', canManageTeamBalances: 'N',
-  allotExclTaxFreight: 'N', requiresApproval: 'N', canOverride: 'N', approvalLevelId: 0,
+  allotExclTaxFreight: 'N', requiresApproval: 'N', canOverride: 'N', approvalLevelId: 0, allowCcOverage: 'N',
 };
 
 @Component({
@@ -178,6 +180,7 @@ export class CustomerRolesComponent implements OnInit {
       requiresApproval: role.requiresApproval,
       canOverride: role.canOverride,
       approvalLevelId: role.approvalLevelId ?? 0,
+      allowCcOverage: role.allowCcOverage,
       // Carried through even though this modal doesn't show them — a save
       // here must not blank out permissions set on the role detail page.
       canOrderSelf:          role.canOrderSelf,

@@ -24,6 +24,10 @@ export interface CustomerRole {
   // Admin override: approves any pending order at any step, outside the
   // level ladder entirely. Mutually exclusive with approvalLevelId.
   canOverride: 'Y' | 'N';
+  // Whether an employee may pay by personal credit card for whatever their
+  // allotments (fallbacks included) don't cover. Replaces the old per-rule
+  // "allow credit card if allotment exhausted" flag.
+  allowCcOverage: 'Y' | 'N';
   createdTs: string;
   createdBy: string | null;
   updatedTs: string;
@@ -46,6 +50,7 @@ export interface CustomerRoleForm {
   // Send 0 to clear the level — the server treats null/"" as "leave
   // unchanged" on *UPDATE, not as a clear.
   approvalLevelId: number;
+  allowCcOverage: 'Y' | 'N';
 }
 
 export interface CustomerRolesPage {

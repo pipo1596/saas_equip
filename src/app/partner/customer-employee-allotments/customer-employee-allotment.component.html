@@ -42,6 +42,17 @@
           <div style="min-width:200px; flex:2 1 200px;">
             <div class="fw-semibold">{{ r.ruleName }}</div>
             <div class="text-muted small">{{ ruleSubtitle(r) }}</div>
+            @if (r.fallbacks.length > 0) {
+              <div class="d-flex align-items-center gap-1 flex-wrap mt-1" style="font-size:.78rem;">
+                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Fallback</span>
+                <span class="text-muted">then</span>
+                @for (f of r.fallbacks; track f.ruleId; let last = $last) {
+                  <span class="fw-medium">{{ f.ruleName }}</span>
+                  <span class="text-muted">({{ fallbackAvailableLabel(f.ruleId) }})</span>
+                  @if (!last) { <i class="bi bi-arrow-right text-muted"></i> }
+                }
+              </div>
+            }
           </div>
 
           <span class="badge rounded-pill" style="background:#EAF3DE; color:#3B6D11; border:1px solid #C4DDA6;">{{ allotTypeLabel(r.allotType) }}</span>
@@ -144,22 +155,27 @@
                 </div>
 
                 <div class="col-md-4">
-                  <div class="text-uppercase text-muted mb-1" style="font-size:.65rem; letter-spacing:.04em;">Payment Ledgers</div>
-                  <div class="d-flex flex-column gap-2">
-                    @for (slot of [1, 2, 3]; track slot) {
-                      @if (ledgerAt(r.ruleId, slot); as l) {
+                  <div class="text-uppercase text-muted mb-1" style="font-size:.65rem; letter-spacing:.04em;">Allotment Fallback</div>
+                  @if (r.fallbacks.length === 0) {
+                    <p class="text-muted small mb-0">No fallback set.</p>
+                  } @else {
+                    <div class="d-flex flex-column gap-2">
+                      <div class="border rounded-3 bg-white px-2 py-1">
+                        <div class="text-muted" style="font-size:.65rem;">1st</div>
+                        <div class="small fw-medium">{{ r.ruleName }}</div>
+                      </div>
+                      @for (f of r.fallbacks; track f.ruleId) {
                         <div class="border rounded-3 bg-white px-2 py-1">
-                          <div class="text-muted" style="font-size:.65rem;">L{{ slot }}</div>
-                          <div class="small fw-medium">{{ l.ledgerName }}</div>
-                        </div>
-                      } @else {
-                        <div class="border rounded-3 bg-white px-2 py-1 text-muted">
-                          <div style="font-size:.65rem;">L{{ slot }}</div>
-                          <div class="small">None</div>
+                          <div class="text-muted" style="font-size:.65rem;">{{ f.seq }}{{ f.seq === 2 ? 'nd' : 'rd' }}</div>
+                          <div class="small fw-medium">
+                            {{ f.ruleName }}
+                            @if (f.status === 'DRAFT') { <span class="text-muted">(Draft)</span> }
+                          </div>
+                          <div class="text-muted small">{{ fallbackAvailableLabel(f.ruleId) }}</div>
                         </div>
                       }
-                    }
-                  </div>
+                    </div>
+                  }
                 </div>
 
                 <div class="col-md-4">
@@ -216,7 +232,12 @@
               @for (txn of group.transactions; track txn.transactionId) {
                 <tr>
                   <td class="small" data-label="Date">{{ formatDate(txn.createdTs.slice(0, 10)) }}</td>
-                  <td data-label="Type"><span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span></td>
+                  <td data-label="Type">
+                    <span [class]="transactionTypeBadge(txn)">{{ transactionTypeLabel(txn) }}</span>
+                    @if (txn.isFallback === 'Y') {
+                      <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Fallback</span>
+                    }
+                  </td>
                   <td class="small" data-label="Category">
                     @if (isLegacyUnitCategory(txn)) {
                       <span class="text-muted fst-italic" title="Recorded before per-assortment tracking">{{ categoryNameFor(txn) }}</span>
@@ -225,7 +246,7 @@
                     }
                   </td>
                   <td class="small" [class]="transactionAmountClass(txn)" data-label="Amount">{{ transactionAmountLabel(txn) }}</td>
-                  <td class="small" data-label="Reason">{{ txn.reason || '—' }}</td>
+                  <td class="small" data-label="Reason">{{ transactionReasonLabel(txn) }}</td>
                   <td class="small" data-label="By">{{ txn.createdBy || '—' }}</td>
                 </tr>
               }
@@ -288,7 +309,7 @@
                   @if (adjustForm.amountType === 'DOLLARS') {
                     <span class="input-group-text">$</span>
                   }
-                  <input type="number" [min]="adjustForm.amountType === 'UNITS' ? 1 : 0.01" [step]="adjustForm.amountType === 'UNITS' ? 1 : 0.01"
+                  <input type="number" [min]="adjustForm.amountType === 'DOLLARS' ? 0.01 : 1" [step]="adjustForm.amountType === 'DOLLARS' ? 0.01 : 1"
                          [max]="maxUnitDebit()"
                          class="form-control"
                          [class.is-invalid]="adjustSubmitted() && (!(adjustForm.amount > 0) || (maxUnitDebit() != null && adjustForm.amount > maxUnitDebit()!))"

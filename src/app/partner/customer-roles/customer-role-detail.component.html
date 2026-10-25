@@ -27,9 +27,6 @@
       <button class="nav-link" [class.active]="activeTab() === 'rules'" (click)="setTab('rules')">Allotment Rules</button>
     </li>
     <li class="nav-item">
-      <button class="nav-link" [class.active]="activeTab() === 'ledgers'" (click)="setTab('ledgers')">Payment Ledgers</button>
-    </li>
-    <li class="nav-item">
       <button class="nav-link" [class.active]="activeTab() === 'permissions'" (click)="setTab('permissions')">Permissions</button>
     </li>
   </ul>
@@ -39,8 +36,8 @@
     <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
       <i class="bi bi-info-circle-fill mt-1"></i>
       <span>
-        Each rule sets an amount, renewal cycle, carryover, quota limits and a <strong>payment-ledger precedence chain</strong>, scoped to an <strong>assortment</strong>.
-        Two rules can draw from different budgets and share a fallback ledger. Ledgers are managed in the <strong>Payment Ledgers</strong> tab.
+        Each rule sets an amount, renewal cycle, carryover and quota limits, scoped to an <strong>assortment</strong>.
+        A Dollar or Points rule can also name up to two other rules as a <strong>fallback</strong>, drawn from once its own balance is used up.
       </span>
     </div>
 
@@ -51,6 +48,11 @@
     @if (rulesError()) {
       <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-exclamation-triangle-fill"></i><span>{{ rulesError() }}</span>
+      </div>
+    }
+    @if (deleteRuleSuccessMessage()) {
+      <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-patch-check-fill"></i><span>Rule deleted. {{ deleteRuleSuccessMessage() }}</span>
       </div>
     }
 
@@ -161,51 +163,42 @@
            </div>
           </div>
 
+          @if (r.fallbacks.length > 0) {
+            <div class="px-3 pb-3 d-flex align-items-center gap-2 flex-wrap" style="font-size:.85rem;">
+              <span class="fw-semibold text-muted">Fallback:</span>
+              <span class="badge rounded-pill bg-white border px-3 py-2 text-dark">1 {{ r.ruleName }}</span>
+              @for (f of r.fallbacks; track f.ruleId) {
+                <i class="bi bi-arrow-right text-muted"></i>
+                <span class="badge rounded-pill bg-white border px-3 py-2 text-dark">
+                  {{ f.seq }} {{ f.ruleName }}@if (f.status === 'DRAFT') { <span class="text-muted">(Draft)</span> }
+                </span>
+              }
+            </div>
+          }
+
           @if (expandedRuleIds().has(r.ruleId)) {
             <div class="border-top bg-light px-3 py-3">
 
               <div class="row g-2 mb-3">
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-4">
                   <div class="card h-100 bg-white"><div class="card-body py-2 px-3">
                     <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Carryover policy</div>
                     <div class="fw-medium small">{{ carryoverLabel(r) }}</div>
                   </div></div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-4">
                   <div class="card h-100 bg-white"><div class="card-body py-2 px-3">
                     <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Renewal trigger</div>
                     <div class="fw-medium small">{{ renewalBasisLabel(r) }}</div>
                   </div></div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-4">
                   <div class="card h-100 bg-white"><div class="card-body py-2 px-3">
                     <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">New-hire proration</div>
                     <div class="fw-medium small">{{ r.prorateMidCycle === 'Y' ? 'Enabled' : 'Disabled' }}</div>
                   </div></div>
                 </div>
-                <div class="col-6 col-md-3">
-                  <div class="card h-100 bg-white"><div class="card-body py-2 px-3">
-                    <div class="text-uppercase text-muted" style="font-size:.65rem; letter-spacing:.04em;">Approval required</div>
-                    <div class="fw-medium small">{{ r.requireApproval === 'Y' ? 'Yes' : 'No' }}</div>
-                  </div></div>
-                </div>
               </div>
-
-              <div class="text-uppercase text-muted mb-1" style="font-size:.65rem; letter-spacing:.04em;">Payment ledger precedence</div>
-              @if (ruleLedgerChainsLoading().has(r.ruleId)) {
-                <div class="text-muted small mb-3"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Loading…</div>
-              } @else {
-                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                  @for (slot of [1, 2, 3]; track slot) {
-                    @if (ledgerAt(r.ruleId, slot); as l) {
-                      <span class="badge rounded-pill bg-white border px-3 py-2 text-dark">L{{ slot }}: {{ l.ledgerName }}</span>
-                    } @else {
-                      <span class="badge rounded-pill bg-white border px-3 py-2 text-muted">L{{ slot }}: none</span>
-                    }
-                    @if (slot < 3) { <i class="bi bi-arrow-right text-muted"></i> }
-                  }
-                </div>
-              }
 
               <div class="text-uppercase text-muted mb-1" style="font-size:.65rem; letter-spacing:.04em;">Categories covered</div>
               <div class="d-flex flex-wrap gap-1">
@@ -227,65 +220,6 @@
         </div>
       }
     }
-  }
-
-  <!-- Payment Ledgers tab -->
-  @if (activeTab() === 'ledgers') {
-    <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
-      <i class="bi bi-wallet2 mt-1"></i>
-      <span>
-        A <strong>payment ledger</strong> is a reusable pool a rule draws from, in precedence order — Ledger 1 first, then fallbacks, then a personal credit card.
-        The <strong>same ledger can back multiple rules and roles</strong>, so a shared budget can cover more than one assortment.
-      </span>
-    </div>
-
-    <div class="d-flex justify-content-end mb-3">
-      <button type="button" class="btn btn-dark" (click)="openAddLedgerModal()"><i class="bi bi-plus-lg me-2"></i>New Ledger</button>
-    </div>
-
-    @if (ledgersError()) {
-      <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
-        <i class="bi bi-exclamation-triangle-fill"></i><span>{{ ledgersError() }}</span>
-      </div>
-    }
-
-    <div class="table-responsive">
-      <table class="table table-hover align-middle mb-0 table-stacked">
-        <thead>
-          <tr>
-            <th>Ledger</th>
-            <th class="text-center">Type</th>
-            <th class="text-center">Amount</th>
-            <th class="text-center">Status</th>
-            <th class="text-end">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @if (ledgersLoading()) {
-            <tr><td colspan="5" class="text-center py-4 text-muted">
-              <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Loading…
-            </td></tr>
-          } @else if (ledgers().length === 0) {
-            <tr><td colspan="5" class="text-center py-4 text-muted">
-              <i class="bi bi-wallet2 me-2"></i>No payment ledgers yet.
-            </td></tr>
-          } @else {
-            @for (l of ledgers(); track l.ledgerId) {
-              <tr>
-                <td class="fw-semibold" data-label="Ledger">{{ l.ledgerName }}</td>
-                <td class="text-center" data-label="Type">{{ ledgerTypeLabel(l.ledgerType) }}</td>
-                <td class="text-center" data-label="Amount">{{ ledgerAmountLabel(l) }}</td>
-                <td class="text-center" data-label="Status"><span [class]="ledgerStatusBadge(l.status)">{{ l.status === 'ACTIVE' ? 'Active' : 'Inactive' }}</span></td>
-                <td class="text-end">
-                  <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="openEditLedgerModal(l)" title="Edit"><i class="bi bi-pencil"></i></button>
-                  <button class="btn btn-sm btn-outline-danger m-1 px-3" (click)="openDeleteLedgerModal(l)" title="Delete"><i class="bi bi-trash"></i></button>
-                </td>
-              </tr>
-            }
-          }
-        </tbody>
-      </table>
-    </div>
   }
 
   <!-- Permissions tab -->
@@ -428,11 +362,21 @@
                    [checked]="permForm.canShopForOthers === 'Y'" (change)="togglePerm('canShopForOthers', $any($event.target).checked)" />
           </div>
         </div>
-        <div class="d-flex align-items-center justify-content-between py-2">
+        <div class="d-flex align-items-center justify-content-between py-2 border-bottom">
           <span>Can view and manage allotment balances for their team</span>
           <div class="form-check form-switch mb-0">
             <input class="form-check-input" type="checkbox" role="switch"
                    [checked]="permForm.canManageTeamBalances === 'Y'" (change)="togglePerm('canManageTeamBalances', $any($event.target).checked)" />
+          </div>
+        </div>
+        <div class="d-flex align-items-center justify-content-between py-2">
+          <div>
+            <div>Allow personal credit card for remaining balance</div>
+            <div class="text-muted small">Used only after all of an employee's allotments, fallbacks included, are exhausted.</div>
+          </div>
+          <div class="form-check form-switch mb-0 flex-shrink-0">
+            <input class="form-check-input" type="checkbox" role="switch"
+                   [checked]="permForm.allowCcOverage === 'Y'" (change)="toggleAllowCcOverage($any($event.target).checked)" />
           </div>
         </div>
 
@@ -476,104 +420,19 @@
           @if (deleteRuleTarget(); as target) {
             <p class="mb-0">Delete rule <strong>{{ target.ruleName }}</strong>? This cannot be undone.</p>
           }
+          @if (deleteRuleUsedByLoading()) {
+            <p class="text-muted small mt-2 mb-0"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Checking fallback usage…</p>
+          } @else if (deleteRuleUsedBy().length > 0) {
+            <div class="alert alert-warning d-flex align-items-start gap-2 mt-3 mb-0 py-2">
+              <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+              <span><strong>{{ deleteRuleTarget()?.ruleName }}</strong> is a fallback for {{ deleteRuleUsedBy().join(', ') }}. Deleting it removes it from {{ deleteRuleUsedBy().length === 1 ? 'that list' : 'those lists' }}.</span>
+            </div>
+          }
         </div>
         <div class="modal-footer border-0 pt-0">
           <button class="btn btn-outline-secondary" (click)="closeDeleteRuleModal()" [disabled]="deletingRule()">Cancel</button>
           <button class="btn btn-danger" (click)="confirmDeleteRule()" [disabled]="deletingRule()">
             @if (deletingRule()) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting… }
-            @else { <i class="bi bi-trash me-2"></i>Delete }
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-}
-
-<!-- Ledger Add/Edit Modal -->
-@if (showLedgerFormModal()) {
-  <div class="modal-backdrop fade show"></div>
-  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title">{{ editingLedgerId() === null ? 'New payment ledger' : 'Edit payment ledger' }}</h5>
-          <button class="btn-close" (click)="closeLedgerFormModal()" [disabled]="ledgerSaving()"></button>
-        </div>
-        <div class="modal-body pt-3">
-          <form (ngSubmit)="saveLedger()" id="roleLedgerForm" novalidate>
-            <div class="row gy-2 gx-3">
-              <div class="col-12">
-                <label class="form-label small fw-semibold text-uppercase text-muted" for="rlf-name">Ledger Name</label>
-                <input id="rlf-name" type="text" name="ledgerName" maxlength="150" placeholder="e.g. ANB Footwear Allowance"
-                       class="form-control" [class.is-invalid]="ledgerSubmitted() && !ledgerForm.ledgerName"
-                       [(ngModel)]="ledgerForm.ledgerName" />
-                <div class="invalid-feedback">Ledger name is required.</div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label small fw-semibold text-uppercase text-muted" for="rlf-type">Type</label>
-                <select id="rlf-type" class="form-select" [(ngModel)]="ledgerForm.ledgerType" name="ledgerType" (ngModelChange)="onLedgerTypeChange()">
-                  <option value="DOLLAR">Dollar</option>
-                  <option value="POINTS">Points</option>
-                  <option value="CREDIT_CARD">Credit card</option>
-                </select>
-              </div>
-              @if (ledgerForm.ledgerType !== 'CREDIT_CARD') {
-                <div class="col-md-6">
-                  <label class="form-label small fw-semibold text-uppercase text-muted" for="rlf-amount">Amount</label>
-                  <input id="rlf-amount" type="number" min="0" step="0.01" class="form-control"
-                         [ngModel]="ledgerForm.amount" (ngModelChange)="ledgerForm.amount = $event" name="amount"
-                         placeholder="Leave blank for unlimited" />
-                </div>
-              }
-              <div class="col-md-6">
-                <label class="form-label small fw-semibold text-uppercase text-muted" for="rlf-status">Status</label>
-                <select id="rlf-status" class="form-select" [(ngModel)]="ledgerForm.status" name="status">
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </div>
-            </div>
-            @if (ledgerSaveError()) {
-              <div class="alert alert-danger d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
-                <i class="bi bi-exclamation-triangle-fill"></i><span>{{ ledgerSaveError() }}</span>
-              </div>
-            }
-          </form>
-        </div>
-        <div class="modal-footer border-0 pt-0">
-          <button class="btn btn-outline-secondary" type="button" (click)="closeLedgerFormModal()" [disabled]="ledgerSaving()">Cancel</button>
-          <button class="btn btn-dark" type="submit" form="roleLedgerForm" [disabled]="ledgerSaving()">
-            @if (ledgerSaving()) {
-              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving…
-            } @else {
-              <i class="bi bi-check-lg me-1"></i>{{ editingLedgerId() === null ? 'Create ledger' : 'Save changes' }}
-            }
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-}
-
-<!-- Delete Ledger Confirm Modal -->
-@if (showDeleteLedgerModal()) {
-  <div class="modal-backdrop fade show"></div>
-  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Payment Ledger</h5>
-          <button class="btn-close" (click)="closeDeleteLedgerModal()" [disabled]="deletingLedger()"></button>
-        </div>
-        <div class="modal-body pt-2">
-          @if (deleteLedgerTarget(); as target) {
-            <p class="mb-0">Delete ledger <strong>{{ target.ledgerName }}</strong>? This cannot be undone.</p>
-          }
-        </div>
-        <div class="modal-footer border-0 pt-0">
-          <button class="btn btn-outline-secondary" (click)="closeDeleteLedgerModal()" [disabled]="deletingLedger()">Cancel</button>
-          <button class="btn btn-danger" (click)="confirmDeleteLedger()" [disabled]="deletingLedger()">
-            @if (deletingLedger()) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Deleting… }
             @else { <i class="bi bi-trash me-2"></i>Delete }
           </button>
         </div>

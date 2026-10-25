@@ -7,11 +7,10 @@ import { CustomerRolesService } from '../customer-roles/customer-roles.service';
 import { CustomerRole } from '../customer-roles/customer-role.model';
 import { CustomerProgramsService } from '../customer-programs/customer-programs.service';
 import { CustomerProgram, CustomerProgramCategoryNode } from '../customer-programs/customer-program.model';
-import { CustomerPaymentLedgersService } from '../customer-payment-ledgers/customer-payment-ledgers.service';
-import { CustomerPaymentLedger } from '../customer-payment-ledgers/customer-payment-ledger.model';
 import { CustomerAllotmentRulesService } from './customer-allotment-rules.service';
 import {
   CustomerAllotmentRule, CustomerAllotmentRuleForm, RuleQuotaLimit, RuleQuotaLimitForm,
+  RuleFallbackCard, RuleFallbackOption,
 } from './customer-allotment-rule.model';
 
 const BLANK_FORM: CustomerAllotmentRuleForm = {
@@ -20,7 +19,6 @@ const BLANK_FORM: CustomerAllotmentRuleForm = {
   hireDaysOffset: null, cycleStartDate: new Date().toISOString().slice(0, 10), expirationDate: null,
   onExpirationAction: 'SUSPEND', carryoverType: 'FORFEIT', carryoverPct: null,
   autoCreateNewEmp: 'Y', prorateMidCycle: 'N', notifyNewCycle: 'Y', notifyLowBalance: 'Y', notifyCarryover: 'N',
-  requireApproval: 'N', allowCcFallback: 'Y',
 };
 
 const BLANK_QUOTA_FORM: RuleQuotaLimitForm = { programId: 0, progCatId: null, limitType: 'UNITS', limitValue: 0, renewalPeriodMonths: 12 };
@@ -36,7 +34,6 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   protected readonly customerMode = inject(CustomerModeService);
   private readonly rolesService = inject(CustomerRolesService);
   private readonly programsService = inject(CustomerProgramsService);
-  private readonly ledgersService = inject(CustomerPaymentLedgersService);
   private readonly service = inject(CustomerAllotmentRulesService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -49,7 +46,6 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   readonly submitted = signal(false);
 
   readonly allPrograms = signal<CustomerProgram[]>([]);
-  readonly allLedgers = signal<CustomerPaymentLedger[]>([]);
   readonly siblingRules = signal<CustomerAllotmentRule[]>([]);
 
   form: CustomerAllotmentRuleForm = { ...BLANK_FORM };
@@ -82,8 +78,14 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
   readonly deleteQuotaTarget = signal<RuleQuotaLimit | null>(null);
   readonly deletingQuota = signal(false);
 
-  // ── Payment ledger precedence chain ─────────────────────────────────────
-  readonly slots = signal<(number | null)[]>([null, null, null]);
+  // ── Allotment fallback (2nd/3rd priority) ────────────────────────────────
+  // Only meaningful once the rule is saved (ruleId exists) and isn't UNITS —
+  // the options call itself needs an existing ruleId to resolve role/type.
+  readonly fallbackCard = signal<RuleFallbackCard | null>(null);
+  readonly fallbackOptions = signal<RuleFallbackOption[]>([]);
+  readonly fallback2RuleId = signal<number>(0);
+  readonly fallback3RuleId = signal<number>(0);
+  readonly fallbackLoading = signal(false);
 
   protected get tpId(): number | undefined {
     return this.partnerMode.activePartner()?.tpId;
@@ -112,6 +114,30 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     return this.form.allotType === 'UNITS';
   }
 
+  // Fallback isn't available for Unit allotments.
+  get needsFallback(): boolean {
+    return this.form.allotType !== 'UNITS';
+  }
+
+  // Changing allotType is refused server-side while the rule has fallbacks
+  // or is another rule's fallback — surfaced here so the Allotment Type
+  // select can be disabled with the same reason shown in the mockup.
+  get allotTypeLockReason(): string | null {
+    const card = this.fallbackCard();
+    if (!card) return null;
+    const names = Array.from(new Set([
+      ...card.data.map(d => d.ruleName),
+      ...card.usedBy.map(u => u.ruleName),
+    ]));
+    return names.length ? `The type cannot change while linked by fallback to: ${names.join(', ')}.` : null;
+  }
+
+  // Leaves out whatever is picked in 2nd priority.
+  get fallback3Options(): RuleFallbackOption[] {
+    const excludeId = this.fallback2RuleId();
+    return this.fallbackOptions().filter(o => o.ruleId !== excludeId);
+  }
+
   get allowsPartialCarryover(): boolean {
     return this.form.dollarAmount != null;
   }
@@ -134,7 +160,7 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     const roleId = this.roleId;
     if (tpId && custId) await this.customerMode.ensure(tpId, custId);
 
-    await Promise.all([this.loadPrograms(), this.loadLedgers()]);
+    await this.loadPrograms();
     if (roleId != null) await Promise.all([this.loadRole(roleId), this.loadSiblingRules(roleId)]);
 
     const ruleId = this.ruleId;
@@ -145,7 +171,9 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
       } else {
         await this.fetchRule(ruleId);
       }
-      await Promise.all([this.loadScope(ruleId), this.loadQuotas(ruleId), this.loadLedgerChain(ruleId)]);
+      const tasks = [this.loadScope(ruleId), this.loadQuotas(ruleId)];
+      if (this.needsFallback) tasks.push(this.loadFallback(ruleId));
+      await Promise.all(tasks);
     } else {
       this.form = { ...BLANK_FORM };
     }
@@ -201,17 +229,6 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     }
   }
 
-  private async loadLedgers(): Promise<void> {
-    const tpId = this.tpId;
-    const custId = this.customerId;
-    if (!tpId || !custId) return;
-    try {
-      this.allLedgers.set(await this.ledgersService.listAll(tpId, custId));
-    } catch {
-      // Non-critical at load time.
-    }
-  }
-
   private async fetchRule(ruleId: number): Promise<void> {
     const tpId = this.tpId;
     const custId = this.customerId;
@@ -250,8 +267,6 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
       notifyNewCycle: rule.notifyNewCycle,
       notifyLowBalance: rule.notifyLowBalance,
       notifyCarryover: rule.notifyCarryover,
-      requireApproval: rule.requireApproval,
-      allowCcFallback: rule.allowCcFallback,
     };
   }
 
@@ -287,6 +302,28 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     if (!this.allowsPartialCarryover && this.form.carryoverType === 'PARTIAL') {
       this.form.carryoverType = 'FORFEIT';
       this.form.carryoverPct = null;
+    }
+    // Switched away from UNITS into a type that now needs fallback data for
+    // the first time this session (e.g. a saved rule whose allotType just
+    // changed) — fetch it now rather than only at page load.
+    const ruleId = this.ruleId;
+    if (ruleId !== null && this.needsFallback && this.fallbackCard() === null) {
+      this.loadFallback(ruleId);
+    }
+  }
+
+  // Digits only — a POINTS rule's amount must be a positive whole number.
+  onPointsAmountInput(value: string): void {
+    const digits = value.replace(/[^\d]/g, '');
+    this.form.pointsAmount = digits ? Number(digits) : null;
+  }
+
+  allotTypeLabelFor(type: string): string {
+    switch (type) {
+      case 'DOLLAR': return 'Dollar';
+      case 'UNITS': return 'Units';
+      case 'POINTS': return 'Points';
+      default: return type;
     }
   }
 
@@ -553,38 +590,34 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
     }
   }
 
-  // ── Payment ledger chain ─────────────────────────────────────────────────
+  // ── Allotment fallback ───────────────────────────────────────────────────
 
-  private async loadLedgerChain(ruleId: number): Promise<void> {
+  private async loadFallback(ruleId: number): Promise<void> {
     const tpId = this.tpId;
     const custId = this.customerId;
-    const roleId = this.roleId;
-    if (!tpId || !custId || roleId == null) return;
+    if (!tpId || !custId) return;
+    this.fallbackLoading.set(true);
     try {
-      const chain = await this.service.getLedgerChain(tpId, custId, roleId, ruleId);
-      const slots: (number | null)[] = [null, null, null];
-      chain.forEach(slot => { slots[slot.precedence - 1] = slot.ledgerId; });
-      this.slots.set(slots);
+      const [card, opts] = await Promise.all([
+        this.service.getFallback(tpId, custId, ruleId),
+        this.service.getFallbackOptions(tpId, custId, ruleId),
+      ]);
+      this.fallbackCard.set(card);
+      this.fallbackOptions.set(opts.data);
+      this.fallback2RuleId.set(card.data.find(f => f.seq === 2)?.ruleId ?? 0);
+      this.fallback3RuleId.set(card.data.find(f => f.seq === 3)?.ruleId ?? 0);
     } catch {
-      // Leave the chain empty — editable from scratch.
+      // Leave empty — editable from scratch; the card just shows no chain.
+    } finally {
+      this.fallbackLoading.set(false);
     }
   }
 
-  isLedgerUsedElsewhere(ledgerId: number, excludeIndex: number): boolean {
-    return this.slots().some((v, i) => i !== excludeIndex && v === ledgerId);
-  }
-
-  activeLedgers(): CustomerPaymentLedger[] {
-    return this.allLedgers().filter(l => l.status === 'ACTIVE');
-  }
-
-  onSlotChange(index: number, value: string): void {
-    const ledgerId = value ? Number(value) : null;
-    this.slots.update(slots => {
-      const next = [...slots];
-      next[index] = ledgerId;
-      return next;
-    });
+  onFallback2Change(value: number): void {
+    this.fallback2RuleId.set(value);
+    // The 3rd dropdown excludes whatever's picked in 2nd — if that was the
+    // current 3rd pick, clear it rather than silently keep an excluded value.
+    if (this.fallback3RuleId() === value) this.fallback3RuleId.set(0);
   }
 
   // ── Save ─────────────────────────────────────────────────────────────────
@@ -614,9 +647,6 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
         progCatId,
         unitQty: this.needsUnitScope ? (this.unitQtyByCategory()[progCatId] ?? 0) : null,
       }));
-      const ledgerSlots = this.slots()
-        .map((ledgerId, i) => ({ precedence: (i + 1) as 1 | 2 | 3, ledgerId }))
-        .filter((s): s is { precedence: 1 | 2 | 3; ledgerId: number } => s.ledgerId != null);
 
       let ruleId = this.ruleId;
       if (ruleId === null) {
@@ -632,7 +662,9 @@ export class CustomerAllotmentRuleEditorComponent implements OnInit {
       if (this.form.scopeAllAssortments === 'N') {
         await this.service.setScope(tpId, custId, roleId, ruleId, scopeItems);
       }
-      await this.service.setLedgerChain(tpId, custId, roleId, ruleId, ledgerSlots);
+      if (this.needsFallback) {
+        await this.service.setFallback(tpId, custId, ruleId, this.fallback2RuleId(), this.fallback3RuleId());
+      }
 
       this.router.navigate(['/partner', tpId, 'customers', custId, 'roles', roleId]);
     } catch (err) {

@@ -67,7 +67,7 @@
               </td>
               <td class="text-end font-monospace" data-label="Price">{{ item.price | currency:(priceList()?.currency || 'USD') }}</td>
               <td class="text-end font-monospace text-muted" data-label="Points">
-                {{ item.points != null ? (item.points | number:'1.0-2') : '—' }}
+                {{ item.points != null ? (item.points | number:'1.0-0') + ' pts' : '—' }}
               </td>
               <td class="text-center" data-label="Status">
                 <span [class]="statusBadge(item.status)">{{ item.status === 'ACTIVE' ? 'Active' : 'Inactive' }}</span>

@@ -4,7 +4,8 @@ import { repairCp1252MojibakeDeep, decodeWindows1252Text } from '../../shared/cp
 import { parseArrayResponse } from '../../shared/parse-array-response.util';
 import {
   CustomerAllotmentRule, CustomerAllotmentRuleForm, CustomerAllotmentRulesPage,
-  RuleAssortmentScope, RuleQuotaLimit, RuleQuotaLimitForm, RuleLedgerSlot,
+  RuleAssortmentScope, RuleQuotaLimit, RuleQuotaLimitForm,
+  RuleFallbackCard, RuleFallbackOptionsResponse,
 } from './customer-allotment-rule.model';
 
 @Injectable({ providedIn: 'root' })
@@ -70,15 +71,27 @@ export class CustomerAllotmentRulesService {
     await this.post({ action: '*QUOTA_DELETE', tpId, custId, roleId, ruleId, quotaId });
   }
 
-  async getLedgerChain(tpId: number, custId: number, roleId: number, ruleId: number): Promise<RuleLedgerSlot[]> {
-    const data = await this.post({ action: '*LEDGER_GET', tpId, custId, roleId, ruleId });
-    return parseArrayResponse<RuleLedgerSlot>(data, 'CustomerAllotmentRulesService *LEDGER_GET');
+  // The Allotment Fallback card's current values — 1st priority is the rule
+  // itself (not included in `data`); `data` holds only the 2nd/3rd. Per the
+  // API doc, these three fallback actions aren't scoped by roleId (the
+  // backend resolves the rule's role from ruleId alone).
+  async getFallback(tpId: number, custId: number, ruleId: number): Promise<RuleFallbackCard> {
+    const data = await this.post({ action: '*FALLBACK_GET', tpId, custId, ruleId });
+    return data as unknown as RuleFallbackCard;
   }
 
-  // Bulk-replaces the rule's ledger precedence chain — an omitted
-  // precedence means that slot is empty, never a null ledgerId.
-  async setLedgerChain(tpId: number, custId: number, roleId: number, ruleId: number, slots: { precedence: 1 | 2 | 3; ledgerId: number }[]): Promise<void> {
-    await this.post({ action: '*LEDGER_SET', tpId, custId, roleId, ruleId, slots });
+  // Candidate options for the 2nd/3rd priority dropdowns — the role's
+  // ACTIVE/DRAFT rules of the same type, excluding this rule itself.
+  async getFallbackOptions(tpId: number, custId: number, ruleId: number): Promise<RuleFallbackOptionsResponse> {
+    const data = await this.post({ action: '*FALLBACK_OPT', tpId, custId, ruleId });
+    return data as unknown as RuleFallbackOptionsResponse;
+  }
+
+  // Two flat fields, not an array — 0 clears that slot, both 0 clears the
+  // whole list. Only valid against a saved rule (same as *SCOPE_SET): for a
+  // new rule, *CREATE first, then this.
+  async setFallback(tpId: number, custId: number, ruleId: number, fallback2RuleId: number, fallback3RuleId: number): Promise<void> {
+    await this.post({ action: '*FALLBACK_SET', tpId, custId, ruleId, fallback2RuleId, fallback3RuleId });
   }
 
   private async post(body: Record<string, unknown>): Promise<Record<string, unknown>> {

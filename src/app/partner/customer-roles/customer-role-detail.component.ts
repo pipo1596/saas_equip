@@ -6,22 +6,11 @@ import { CustomerModeService } from '../partner-customers/customer-mode.service'
 import { CustomerRolesService } from './customer-roles.service';
 import { CustomerRole, CustomerRoleForm } from './customer-role.model';
 import { CustomerAllotmentRulesService } from '../customer-allotment-rules/customer-allotment-rules.service';
-import { CustomerAllotmentRule, RuleAssortmentScope, RuleLedgerSlot } from '../customer-allotment-rules/customer-allotment-rule.model';
-import { CustomerPaymentLedgersService } from '../customer-payment-ledgers/customer-payment-ledgers.service';
-import { CustomerPaymentLedger, CustomerPaymentLedgerForm } from '../customer-payment-ledgers/customer-payment-ledger.model';
+import { CustomerAllotmentRule, RuleAssortmentScope } from '../customer-allotment-rules/customer-allotment-rule.model';
 import { CustomerApprovalLevelsService } from '../customer-approval-levels/customer-approval-levels.service';
 import { ApprovalLadder, ApprovalLevel, ApprovalSimulation } from '../customer-approval-levels/customer-approval-level.model';
 
-type RoleDetailTab = 'rules' | 'ledgers' | 'permissions';
-
-interface LedgerForm {
-  ledgerName: string;
-  ledgerType: 'DOLLAR' | 'POINTS' | 'CREDIT_CARD';
-  amount: number | null;
-  status: 'ACTIVE' | 'INACTIVE';
-}
-
-const BLANK_LEDGER_FORM: LedgerForm = { ledgerName: '', ledgerType: 'DOLLAR', amount: null, status: 'ACTIVE' };
+type RoleDetailTab = 'rules' | 'permissions';
 
 @Component({
   selector: 'app-customer-role-detail',
@@ -34,7 +23,6 @@ export class CustomerRoleDetailComponent implements OnInit {
   protected readonly customerMode = inject(CustomerModeService);
   private readonly rolesService = inject(CustomerRolesService);
   private readonly rulesService = inject(CustomerAllotmentRulesService);
-  private readonly ledgersService = inject(CustomerPaymentLedgersService);
   private readonly approvalLevelsService = inject(CustomerApprovalLevelsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -51,25 +39,14 @@ export class CustomerRoleDetailComponent implements OnInit {
   readonly showDeleteRuleModal = signal(false);
   readonly deleteRuleTarget = signal<CustomerAllotmentRule | null>(null);
   readonly deletingRule = signal(false);
+  // Other rules that name the delete target as their own fallback — fetched
+  // via *FALLBACK_GET's usedBy so the confirm dialog can warn about them.
+  readonly deleteRuleUsedBy = signal<string[]>([]);
+  readonly deleteRuleUsedByLoading = signal(false);
+  readonly deleteRuleSuccessMessage = signal<string | null>(null);
   readonly roleEmployeeCount = signal(0);
   readonly ruleScopes = signal<Record<number, RuleAssortmentScope[]>>({});
   readonly expandedRuleIds = signal<Set<number>>(new Set());
-  readonly ruleLedgerChains = signal<Record<number, RuleLedgerSlot[]>>({});
-  readonly ruleLedgerChainsLoading = signal<Set<number>>(new Set());
-
-  // ── Payment Ledgers tab ──────────────────────────────────────────────────
-  readonly ledgers = signal<CustomerPaymentLedger[]>([]);
-  readonly ledgersLoading = signal(false);
-  readonly ledgersError = signal<string | null>(null);
-  readonly showLedgerFormModal = signal(false);
-  readonly editingLedgerId = signal<number | null>(null);
-  readonly ledgerSaving = signal(false);
-  readonly ledgerSaveError = signal<string | null>(null);
-  readonly ledgerSubmitted = signal(false);
-  readonly showDeleteLedgerModal = signal(false);
-  readonly deleteLedgerTarget = signal<CustomerPaymentLedger | null>(null);
-  readonly deletingLedger = signal(false);
-  ledgerForm: LedgerForm = { ...BLANK_LEDGER_FORM };
 
   // ── Permissions tab ──────────────────────────────────────────────────────
   readonly permSaving = signal(false);
@@ -77,10 +54,10 @@ export class CustomerRoleDetailComponent implements OnInit {
   readonly permSaved = signal(false);
   permForm: {
     canOrderSelf: 'Y' | 'N'; canApprove: 'Y' | 'N'; canShopForOthers: 'Y' | 'N'; canManageTeamBalances: 'Y' | 'N';
-    canOverride: 'Y' | 'N'; approvalLevelId: number;
+    canOverride: 'Y' | 'N'; approvalLevelId: number; allowCcOverage: 'Y' | 'N';
   } = {
     canOrderSelf: 'Y', canApprove: 'N', canShopForOthers: 'N', canManageTeamBalances: 'N',
-    canOverride: 'N', approvalLevelId: 0,
+    canOverride: 'N', approvalLevelId: 0, allowCcOverage: 'N',
   };
 
   // Approval ladder (customer-wide), loaded lazily the first time the
@@ -139,6 +116,7 @@ export class CustomerRoleDetailComponent implements OnInit {
       canOrderSelf: role.canOrderSelf, canApprove: role.canApprove,
       canShopForOthers: role.canShopForOthers, canManageTeamBalances: role.canManageTeamBalances,
       canOverride: role.canOverride, approvalLevelId: role.approvalLevelId ?? 0,
+      allowCcOverage: role.allowCcOverage,
     };
   }
 
@@ -160,7 +138,6 @@ export class CustomerRoleDetailComponent implements OnInit {
   setTab(tab: RoleDetailTab): void {
     this.activeTab.set(tab);
     if (tab === 'rules' && this.rules().length === 0) this.loadRules();
-    if (tab === 'ledgers' && this.ledgers().length === 0) this.loadLedgers();
     if (tab === 'permissions' && this.ladder() === null) this.loadLadder();
   }
 
@@ -218,40 +195,14 @@ export class CustomerRoleDetailComponent implements OnInit {
     const expanded = new Set(this.expandedRuleIds());
     if (expanded.has(ruleId)) {
       expanded.delete(ruleId);
-      this.expandedRuleIds.set(expanded);
-      return;
+    } else {
+      expanded.add(ruleId);
     }
-    expanded.add(ruleId);
     this.expandedRuleIds.set(expanded);
-    if (!this.ruleLedgerChains()[ruleId]) this.loadRuleLedgerChain(ruleId);
-  }
-
-  private async loadRuleLedgerChain(ruleId: number): Promise<void> {
-    const tpId = this.tpId;
-    const custId = this.customerId;
-    const roleId = this.roleId;
-    if (!tpId || !custId || roleId == null) return;
-    this.ruleLedgerChainsLoading.update(s => new Set(s).add(ruleId));
-    try {
-      const chain = await this.rulesService.getLedgerChain(tpId, custId, roleId, ruleId);
-      this.ruleLedgerChains.update(m => ({ ...m, [ruleId]: chain }));
-    } catch {
-      // Leave empty — the expanded section just shows "none" for every slot.
-    } finally {
-      this.ruleLedgerChainsLoading.update(s => {
-        const next = new Set(s);
-        next.delete(ruleId);
-        return next;
-      });
-    }
   }
 
   scopeFor(ruleId: number): RuleAssortmentScope[] {
     return this.ruleScopes()[ruleId] ?? [];
-  }
-
-  ledgerAt(ruleId: number, precedence: number): RuleLedgerSlot | null {
-    return (this.ruleLedgerChains()[ruleId] ?? []).find(s => s.precedence === precedence) ?? null;
   }
 
   // ── Rules summary stat cards ─────────────────────────────────────────────
@@ -313,12 +264,32 @@ export class CustomerRoleDetailComponent implements OnInit {
 
   openDeleteRuleModal(rule: CustomerAllotmentRule): void {
     this.deleteRuleTarget.set(rule);
+    this.deleteRuleUsedBy.set([]);
     this.showDeleteRuleModal.set(true);
+    // UNITS rules can never be another rule's fallback target
+    // (fallbackAvailable is always 'N' for them), so skip the fetch.
+    if (rule.allotType !== 'UNITS') this.loadDeleteRuleUsedBy(rule.ruleId);
+  }
+
+  private async loadDeleteRuleUsedBy(ruleId: number): Promise<void> {
+    const tpId = this.tpId;
+    const custId = this.customerId;
+    if (!tpId || !custId) return;
+    this.deleteRuleUsedByLoading.set(true);
+    try {
+      const card = await this.rulesService.getFallback(tpId, custId, ruleId);
+      this.deleteRuleUsedBy.set(card.usedBy.map(u => u.ruleName));
+    } catch {
+      // Non-critical — the dialog just won't show the usedBy warning.
+    } finally {
+      this.deleteRuleUsedByLoading.set(false);
+    }
   }
 
   closeDeleteRuleModal(): void {
     this.showDeleteRuleModal.set(false);
     this.deleteRuleTarget.set(null);
+    this.deleteRuleUsedBy.set([]);
   }
 
   async confirmDeleteRule(): Promise<void> {
@@ -329,9 +300,14 @@ export class CustomerRoleDetailComponent implements OnInit {
     if (!target || !tpId || !custId || roleId == null) return;
     this.deletingRule.set(true);
     try {
+      const usedBy = this.deleteRuleUsedBy();
       await this.rulesService.remove(tpId, custId, roleId, target.ruleId);
       this.closeDeleteRuleModal();
       await this.loadRules();
+      if (usedBy.length > 0) {
+        this.deleteRuleSuccessMessage.set(`Removed from the fallback list of: ${usedBy.join(', ')}.`);
+        setTimeout(() => this.deleteRuleSuccessMessage.set(null), 5000);
+      }
     } catch (err) {
       this.rulesError.set(err instanceof Error ? err.message : 'Delete failed.');
       this.closeDeleteRuleModal();
@@ -418,124 +394,6 @@ export class CustomerRoleDetailComponent implements OnInit {
       : 'badge bg-secondary-subtle text-secondary border border-secondary-subtle';
   }
 
-  // ── Payment Ledgers tab ──────────────────────────────────────────────────
-
-  async loadLedgers(): Promise<void> {
-    const tpId = this.tpId;
-    const custId = this.customerId;
-    if (!tpId || !custId) return;
-    this.ledgersLoading.set(true);
-    this.ledgersError.set(null);
-    try {
-      this.ledgers.set(await this.ledgersService.listAll(tpId, custId));
-    } catch (err) {
-      this.ledgersError.set(err instanceof Error ? err.message : 'Failed to load payment ledgers.');
-    } finally {
-      this.ledgersLoading.set(false);
-    }
-  }
-
-  openAddLedgerModal(): void {
-    this.editingLedgerId.set(null);
-    this.ledgerForm = { ...BLANK_LEDGER_FORM };
-    this.ledgerSaveError.set(null);
-    this.ledgerSubmitted.set(false);
-    this.showLedgerFormModal.set(true);
-  }
-
-  openEditLedgerModal(ledger: CustomerPaymentLedger): void {
-    this.editingLedgerId.set(ledger.ledgerId);
-    this.ledgerForm = {
-      ledgerName: ledger.ledgerName, ledgerType: ledger.ledgerType,
-      amount: ledger.amount, status: ledger.status,
-    };
-    this.ledgerSaveError.set(null);
-    this.ledgerSubmitted.set(false);
-    this.showLedgerFormModal.set(true);
-  }
-
-  closeLedgerFormModal(): void {
-    this.showLedgerFormModal.set(false);
-  }
-
-  onLedgerTypeChange(): void {
-    if (this.ledgerForm.ledgerType === 'CREDIT_CARD') this.ledgerForm.amount = null;
-  }
-
-  async saveLedger(): Promise<void> {
-    const tpId = this.tpId;
-    const custId = this.customerId;
-    if (!tpId || !custId) return;
-    this.ledgerSubmitted.set(true);
-    if (!this.ledgerForm.ledgerName) return;
-
-    this.ledgerSaving.set(true);
-    this.ledgerSaveError.set(null);
-    try {
-      const payload: CustomerPaymentLedgerForm = { ...this.ledgerForm };
-      const id = this.editingLedgerId();
-      if (id === null) {
-        await this.ledgersService.create(tpId, custId, payload);
-      } else {
-        await this.ledgersService.update(tpId, custId, id, payload);
-      }
-      this.showLedgerFormModal.set(false);
-      await this.loadLedgers();
-    } catch (err) {
-      this.ledgerSaveError.set(err instanceof Error ? err.message : 'Failed to save payment ledger.');
-    } finally {
-      this.ledgerSaving.set(false);
-    }
-  }
-
-  openDeleteLedgerModal(ledger: CustomerPaymentLedger): void {
-    this.deleteLedgerTarget.set(ledger);
-    this.showDeleteLedgerModal.set(true);
-  }
-
-  closeDeleteLedgerModal(): void {
-    this.showDeleteLedgerModal.set(false);
-    this.deleteLedgerTarget.set(null);
-  }
-
-  async confirmDeleteLedger(): Promise<void> {
-    const target = this.deleteLedgerTarget();
-    const tpId = this.tpId;
-    const custId = this.customerId;
-    if (!target || !tpId || !custId) return;
-    this.deletingLedger.set(true);
-    try {
-      await this.ledgersService.remove(tpId, custId, target.ledgerId);
-      this.closeDeleteLedgerModal();
-      await this.loadLedgers();
-    } catch (err) {
-      this.ledgersError.set(err instanceof Error ? err.message : 'Delete failed.');
-      this.closeDeleteLedgerModal();
-    } finally {
-      this.deletingLedger.set(false);
-    }
-  }
-
-  ledgerTypeLabel(type: string): string {
-    switch (type) {
-      case 'CREDIT_CARD': return 'Credit Card';
-      case 'POINTS': return 'Points';
-      default: return 'Dollar';
-    }
-  }
-
-  ledgerAmountLabel(ledger: CustomerPaymentLedger): string {
-    if (ledger.ledgerType === 'CREDIT_CARD') return '—';
-    if (ledger.amount == null) return 'Unlimited';
-    return ledger.ledgerType === 'POINTS' ? `${ledger.amount} pts` : `$${ledger.amount.toFixed(2)}`;
-  }
-
-  ledgerStatusBadge(status: string): string {
-    return status === 'ACTIVE'
-      ? 'badge bg-success-subtle text-success border border-success-subtle'
-      : 'badge bg-secondary-subtle text-secondary border border-secondary-subtle';
-  }
-
   // ── Permissions tab ──────────────────────────────────────────────────────
 
   togglePerm(field: 'canOrderSelf' | 'canApprove' | 'canShopForOthers' | 'canManageTeamBalances', value: boolean): void {
@@ -546,6 +404,10 @@ export class CustomerRoleDetailComponent implements OnInit {
       this.permForm.canOverride = 'N';
       this.permForm.approvalLevelId = 0;
     }
+  }
+
+  toggleAllowCcOverage(value: boolean): void {
+    this.permForm.allowCcOverage = value ? 'Y' : 'N';
   }
 
   toggleOverride(value: boolean): void {

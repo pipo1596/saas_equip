@@ -1035,7 +1035,7 @@
                           <input type="number" class="form-control form-control-sm" style="width: 100px"
                                  [value]="$any(row)[field[0]] ?? ''"
                                  (change)="updateGeneratedSkuField(i, $any(field[0]), $any($event.target).value)"
-                                 [placeholder]="field[1]" min="0" step="0.01"
+                                 [placeholder]="field[1]" min="0" [step]="field[0] === 'points' ? 1 : 0.01"
                                  [required]="field[0] === 'price'"
                                  [class.is-invalid]="field[0] === 'price' && $any(row).price === null">
                           @if (i === 0 && state.rows.length > 1) {

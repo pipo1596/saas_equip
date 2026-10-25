@@ -7,7 +7,7 @@ import { CustomerEmployeesService } from '../customer-employees/customer-employe
 import { CustomerEmployee } from '../customer-employees/customer-employee.model';
 import { CustomerAllotmentRulesService } from '../customer-allotment-rules/customer-allotment-rules.service';
 import {
-  CustomerAllotmentRule, RuleAssortmentScope, RuleLedgerSlot, RuleQuotaLimit,
+  CustomerAllotmentRule, RuleAssortmentScope, RuleQuotaLimit,
 } from '../customer-allotment-rules/customer-allotment-rule.model';
 import { CustomerProgramsService } from '../customer-programs/customer-programs.service';
 import { CustomerProgramCategoryNode } from '../customer-programs/customer-program.model';
@@ -58,7 +58,6 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
   // Role Detail page's rule cards.
   readonly expandedRuleIds = signal<Set<number>>(new Set());
   readonly expandedLoading = signal<Set<number>>(new Set());
-  readonly ruleLedgerChains = signal<Record<number, RuleLedgerSlot[]>>({});
   readonly ruleQuotas = signal<Record<number, RuleQuotaLimit[]>>({});
 
   // ── Manual adjustment modal ──────────────────────────────────────────────
@@ -512,7 +511,7 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     }
     expanded.add(ruleId);
     this.expandedRuleIds.set(expanded);
-    if (!this.ruleScopes()[ruleId] || !this.ruleLedgerChains()[ruleId] || !this.ruleQuotas()[ruleId]) {
+    if (!this.ruleScopes()[ruleId] || !this.ruleQuotas()[ruleId]) {
       this.loadExpandedData(ruleId);
     }
   }
@@ -524,13 +523,11 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     if (!tpId || !custId || roleId == null) return;
     this.expandedLoading.update(s => new Set(s).add(ruleId));
     try {
-      const [scope, chain, quotas] = await Promise.all([
+      const [scope, quotas] = await Promise.all([
         this.ruleScopes()[ruleId] ? Promise.resolve(this.ruleScopes()[ruleId]) : this.rulesService.getScope(tpId, custId, roleId, ruleId),
-        this.rulesService.getLedgerChain(tpId, custId, roleId, ruleId),
         this.rulesService.listQuotas(tpId, custId, roleId, ruleId),
       ]);
       this.ruleScopes.update(m => ({ ...m, [ruleId]: scope }));
-      this.ruleLedgerChains.update(m => ({ ...m, [ruleId]: chain }));
       this.ruleQuotas.update(m => ({ ...m, [ruleId]: quotas }));
     } catch {
       // Leave whatever loaded — sections simply render empty.
@@ -547,8 +544,15 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
     return this.ruleScopes()[ruleId] ?? [];
   }
 
-  ledgerAt(ruleId: number, precedence: number): RuleLedgerSlot | null {
-    return (this.ruleLedgerChains()[ruleId] ?? []).find(s => s.precedence === precedence) ?? null;
+  // The fallback target's own live remaining balance — it's one of this
+  // employee's own rules (fallbacks are same-role), so no extra fetch is
+  // needed beyond what's already loaded for the page.
+  fallbackAvailableLabel(ruleId: number): string {
+    const rule = this.rules().find(r => r.ruleId === ruleId);
+    if (!rule) return '—';
+    const remaining = this.primaryRemaining(rule);
+    const label = rule.allotType === 'POINTS' ? `${remaining} pts` : `$${remaining.toFixed(2)}`;
+    return `${label} available`;
   }
 
   quotasFor(ruleId: number): RuleQuotaLimit[] {
@@ -632,6 +636,14 @@ export class CustomerEmployeeAllotmentComponent implements OnInit, AfterViewInit
 
   transactionAmountClass(txn: EmployeeAllotmentTransaction): string {
     return this.effectiveDirection(txn) === 'CREDIT' ? 'text-success fw-medium' : 'text-danger fw-medium';
+  }
+
+  // "Order EQ200031 · fallback for Officer 700 Uniform" — appended whenever
+  // this draw (or a credit refunding one) spilled over onto a fallback rule.
+  transactionReasonLabel(txn: EmployeeAllotmentTransaction): string {
+    const reason = txn.reason || '—';
+    if (txn.isFallback !== 'Y' || !txn.fallbackForRuleName) return reason;
+    return `${reason} · fallback for ${txn.fallbackForRuleName}`;
   }
 
   transactionTypeBadge(txn: EmployeeAllotmentTransaction): string {

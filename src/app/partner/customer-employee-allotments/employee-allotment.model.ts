@@ -75,6 +75,13 @@ export interface EmployeeAllotmentTransaction {
   // The category's own name (not the full breadcrumb) — null wherever
   // progCatId is null, for the same two reasons.
   categoryName: string | null;
+  // Whether this draw (or a credit refunding one) spilled over onto a
+  // fallback rule rather than the one it's filed under (`ruleId`) having
+  // covered it directly. fallbackForRuleId/Name name the original rule the
+  // item was scoped to — null when isFallback is 'N'.
+  isFallback: 'Y' | 'N';
+  fallbackForRuleId: number | null;
+  fallbackForRuleName: string | null;
   reason: string | null;
   createdBy: string | null;
 }
