@@ -166,6 +166,15 @@
 
           <li class="nav-item">
             <a class="sidebar-nav-link"
+               [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'orders']"
+               routerLinkActive="active">
+              <i class="bi bi-receipt nav-icon"></i>
+              <span>Orders</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="sidebar-nav-link"
                [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'addresses']"
                routerLinkActive="active">
               <i class="bi bi-geo-alt nav-icon"></i>

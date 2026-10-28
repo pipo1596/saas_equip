@@ -34,7 +34,7 @@ export class PartnerSidebarComponent {
   }
 
   private checkCustomerMode(): boolean {
-    return /\/customers\/\d+\/(overview|uniform-programs|roles|employees|locations|addresses|contacts|shipping-methods|approval-levels|price-lists|notices)(\/|$|\?)/.test(this.router.url);
+    return /\/customers\/\d+\/(overview|uniform-programs|roles|employees|locations|addresses|contacts|shipping-methods|approval-levels|price-lists|notices|orders)(\/|$|\?)/.test(this.router.url);
   }
 
   exitSettingsMode(): void {

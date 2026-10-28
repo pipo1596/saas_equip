@@ -1,0 +1,226 @@
+<section class="page-shell">
+
+  <div class="page-shell-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <button type="button" class="btn btn-link p-0 text-decoration-none mb-1" (click)="back()">
+        <i class="bi bi-arrow-left me-1"></i>Back to orders
+      </button>
+      <h1 class="page-title mb-0">
+        @if (order(); as o) { Order {{ o.orderNumber }} } @else { Order }
+      </h1>
+      @if (context(); as ctx) {
+        <p class="page-subtitle mb-0">{{ ctx.customer.name }} · {{ ctx.location.name }} · for <strong>{{ ctx.tenantPartner.name }}</strong></p>
+      }
+    </div>
+    @if (canRefund()) {
+      <button type="button" class="btn btn-dark" (click)="openRefundModal()">
+        <i class="bi bi-arrow-return-left me-2"></i>Refund items
+      </button>
+    }
+  </div>
+
+  @if (refundSuccessMessage()) {
+    <div class="alert alert-success d-flex align-items-start gap-2 mb-3">
+      <i class="bi bi-patch-check-fill mt-1"></i>
+      <span>{{ refundSuccessMessage() }}</span>
+      <button class="btn-close ms-auto" (click)="refundSuccessMessage.set(null)"></button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+      Loading…
+    </div>
+  } @else if (loadError()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ loadError() }}</span>
+    </div>
+  } @else if (order(); as o) {
+
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-3">
+        <div class="card h-100"><div class="card-body">
+          <div class="text-uppercase text-muted" style="font-size:.7rem; letter-spacing:.04em;">Status</div>
+          <div class="fs-5 fw-bold">{{ o.status }}</div>
+        </div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card h-100"><div class="card-body">
+          <div class="text-uppercase text-muted" style="font-size:.7rem; letter-spacing:.04em;">Placed</div>
+          <div class="fs-6 fw-semibold">{{ o.placedTs }}</div>
+        </div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card h-100"><div class="card-body">
+          <div class="text-uppercase text-muted" style="font-size:.7rem; letter-spacing:.04em;">Lines</div>
+          <div class="fs-5 fw-bold">{{ o.lines.length }}</div>
+        </div></div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card h-100"><div class="card-body">
+          <div class="text-uppercase text-muted" style="font-size:.7rem; letter-spacing:.04em;">Approve/Reject</div>
+          <div class="fs-6 fw-semibold text-muted">Not available here</div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="card-title fw-semibold mb-3">Items</h6>
+        <table class="table table-sm align-middle mb-0 table-stacked">
+          <thead>
+            <tr><th>Line</th><th>SKU</th><th>Title</th><th class="text-end">Ordered</th><th class="text-end">Shipped</th><th class="text-end">Cancelled</th><th class="text-end">Refunded</th></tr>
+          </thead>
+          <tbody>
+            @for (line of o.lines; track line.orderLineId) {
+              <tr>
+                <td data-label="Line">{{ line.lineNo }}</td>
+                <td class="small font-monospace" data-label="SKU">{{ line.skuCode || '—' }}</td>
+                <td data-label="Title">{{ line.title || '—' }}</td>
+                <td class="text-end" data-label="Ordered">{{ line.qtyOrdered }}</td>
+                <td class="text-end" data-label="Shipped">{{ line.qtyShipped }}</td>
+                <td class="text-end" data-label="Cancelled">{{ line.qtyCancelled }}</td>
+                <td class="text-end" data-label="Refunded">{{ line.qtyRefunded }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    @if (o.paidFrom.length > 0) {
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-2">Paid from</h6>
+          <div class="d-flex flex-wrap gap-2">
+            @for (p of o.paidFrom; track $index) {
+              <span class="badge rounded-pill bg-light text-dark border px-3 py-2">
+                {{ p['ruleName'] || ('Rule #' + p['ruleId']) }}: {{ p['amount'] }} {{ p['amountType'] }}
+              </span>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (o.shipments.length > 0) {
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-2">Shipments</h6>
+          <div class="d-flex flex-column gap-2">
+            @for (s of o.shipments; track $index) {
+              <div class="border rounded-3 px-3 py-2 small">
+                <span class="fw-medium">{{ s['carrier'] || 'Carrier n/a' }}</span>
+                @if (s['trackingNumber']) { <span class="text-muted"> · {{ s['trackingNumber'] }}</span> }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (o.refunds.length > 0) {
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title fw-semibold mb-2">Refund History</h6>
+          <table class="table table-sm align-middle mb-0 table-stacked">
+            <thead>
+              <tr><th>Date</th><th>Line</th><th class="text-end">Qty</th><th>Back to allotment</th><th>Reason</th><th>By</th></tr>
+            </thead>
+            <tbody>
+              @for (r of o.refunds; track r.refundId) {
+                <tr>
+                  <td class="small" data-label="Date">{{ r.ts }}</td>
+                  <td data-label="Line">{{ r.lineNo }}</td>
+                  <td class="text-end" data-label="Qty">{{ r.qty }}</td>
+                  <td class="small" data-label="Back to allotment">
+                    @if (r.units > 0) { {{ r.units }} unit{{ r.units === 1 ? '' : 's' }} }
+                    @if (r.dollars > 0) { {{ r.units > 0 ? ' · ' : '' }}${{ r.dollars.toFixed(2) }} }
+                    @if (r.points > 0) { {{ (r.units > 0 || r.dollars > 0) ? ' · ' : '' }}{{ r.points }} pts }
+                    @if (r.taxToAllotment > 0) { · ${{ r.taxToAllotment.toFixed(2) }} tax }
+                    @if (r.cardAmt > 0) { <span class="text-muted"> · ${{ r.cardAmt.toFixed(2) }} card (not refunded)</span> }
+                  </td>
+                  <td class="small" data-label="Reason">{{ r.reason }}</td>
+                  <td class="small" data-label="By">{{ r.by }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+  }
+
+</section>
+
+<!-- Refund Modal -->
+@if (showRefundModal()) {
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title"><i class="bi bi-arrow-return-left me-2 text-muted"></i>Refund Items</h5>
+          <button class="btn-close" (click)="closeRefundModal()" [disabled]="refundSaving()"></button>
+        </div>
+        <div class="modal-body pt-2">
+          <p class="text-muted small">
+            Refunds are by item quantity, not dollar amount. Units come back first; dollars/points come back in
+            proportion to how the line was paid, plus tax on those items. Freight is never refunded, and any amount
+            paid on a personal card isn't refunded here — it has to be voided on the storefront.
+          </p>
+
+          @if (refundLines().length === 0) {
+            <p class="text-muted small mb-0">No shipped items are available to refund on this order.</p>
+          } @else {
+            <table class="table table-sm align-middle mb-3">
+              <thead>
+                <tr><th>Line</th><th>Title</th><th class="text-end">Shipped</th><th style="width:120px;">Refund qty</th></tr>
+              </thead>
+              <tbody>
+                @for (row of refundLines(); track row.line.orderLineId) {
+                  <tr>
+                    <td>{{ row.line.lineNo }}</td>
+                    <td class="small">{{ row.line.title || '—' }}</td>
+                    <td class="text-end small">{{ row.refundableQty }}</td>
+                    <td>
+                      <input type="number" min="0" [max]="row.refundableQty" step="1" class="form-control form-control-sm"
+                             [value]="row.qty" (input)="onRefundQtyChange(row, $any($event.target).value)" />
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+            @if (refundSubmitted() && !refundHasAnyQty) {
+              <div class="text-danger small mb-2">Enter a quantity greater than 0 for at least one line.</div>
+            }
+
+            <label class="form-label small fw-semibold text-uppercase text-muted">Reason</label>
+            <textarea class="form-control" rows="2" maxlength="500"
+                      [class.is-invalid]="refundSubmitted() && !refundReason().trim()"
+                      [ngModel]="refundReason()" (ngModelChange)="refundReason.set($event)" placeholder="e.g. Wrong size returned"></textarea>
+            <div class="invalid-feedback">A reason is required.</div>
+          }
+
+          @if (refundError()) {
+            <div class="alert alert-danger d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
+              <i class="bi bi-exclamation-triangle-fill"></i><span>{{ refundError() }}</span>
+            </div>
+          }
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary" (click)="closeRefundModal()" [disabled]="refundSaving()">Cancel</button>
+          <button type="button" class="btn btn-dark" [disabled]="refundSaving() || refundLines().length === 0" (click)="submitRefund()">
+            @if (refundSaving()) {
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing…
+            } @else {
+              <i class="bi bi-check-lg me-1"></i>Submit refund
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

@@ -23,6 +23,8 @@ import { CustomerProgramTreeComponent } from '../customer-programs/customer-prog
 import { CustomerProgramViewsComponent } from '../customer-program-views/customer-program-views.component';
 import { CustomerNoticesComponent } from '../customer-notices/customer-notices.component';
 import { CustomerNoticeEditorComponent } from '../customer-notices/customer-notice-editor.component';
+import { OrdersComponent } from '../orders/orders.component';
+import { OrderDetailComponent } from '../orders/order-detail.component';
 
 // All routes are relative to partner/:id/customers
 export const CUSTOMERS_ROUTES: Routes = [
@@ -44,6 +46,8 @@ export const CUSTOMERS_ROUTES: Routes = [
   { path: ':customerId/notices', component: CustomerNoticesComponent },
   { path: ':customerId/notices/new', component: CustomerNoticeEditorComponent },
   { path: ':customerId/notices/:noticeId/edit', component: CustomerNoticeEditorComponent },
+  { path: ':customerId/orders', component: OrdersComponent },
+  { path: ':customerId/orders/:orderId', component: OrderDetailComponent },
   { path: ':customerId/employees', component: CustomerEmployeesComponent },
   { path: ':customerId/employees/new', component: CustomerEmployeeFormComponent },
   { path: ':customerId/employees/:employeeId/edit', component: CustomerEmployeeFormComponent },
