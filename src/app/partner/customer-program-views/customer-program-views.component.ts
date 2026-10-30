@@ -580,6 +580,31 @@ export class CustomerProgramViewsComponent implements OnInit {
     });
   }
 
+  // Every category id in cat's subtree, not including cat itself.
+  private descendantCategoryIds(cat: CustomerProgramCategoryNode): number[] {
+    const ids: number[] = [];
+    const visit = (node: CustomerProgramCategoryNode) => {
+      for (const child of node.children) {
+        ids.push(child.progCatId);
+        visit(child);
+      }
+    };
+    visit(cat);
+    return ids;
+  }
+
+  // Every SKU's progProdId in cat's subtree, including cat's own directly
+  // attached SKUs (not just descendant categories' SKUs).
+  private descendantProgProdIds(cat: CustomerProgramCategoryNode): number[] {
+    const ids: number[] = [];
+    const visit = (node: CustomerProgramCategoryNode) => {
+      for (const sku of node.skus) ids.push(sku.progProdId);
+      for (const child of node.children) visit(child);
+    };
+    visit(cat);
+    return ids;
+  }
+
   private allCategoryIds(): number[] {
     const ids: number[] = [];
     const visit = (cat: CustomerProgramCategoryNode) => { ids.push(cat.progCatId); cat.children.forEach(visit); };
@@ -634,8 +659,11 @@ export class CustomerProgramViewsComponent implements OnInit {
   }
 
   // ── Inclusion state ───────────────────────────────────────────────────────
-  // Every category and SKU is an independent pick — no rolled-up "included
-  // via an ancestor category" state, so nothing here is ever disabled.
+  // Every category and SKU is still its own explicit, independently-editable
+  // selection (no rolled-up "included via an ancestor category" state, so
+  // nothing here is ever disabled) — toggling a category just also writes
+  // that same explicit state to everything in its subtree in one action
+  // (see toggleCategory()), rather than being computed from it afterward.
 
   isCategoryIncluded(progCatId: number): boolean {
     return this.directCategoryIds().has(progCatId);
@@ -747,15 +775,45 @@ export class CustomerProgramViewsComponent implements OnInit {
     this.selectionsError.set(null);
     try {
       if (this.isCategoryIncluded(cat.progCatId)) {
-        await this.service.removeCategory(tpId, custId, programId, view.viewId, [cat.progCatId]);
+        // Uncheck cascades down: this category, every descendant category,
+        // and every SKU anywhere in the subtree all come off together.
+        const descendantCatIds = this.descendantCategoryIds(cat).filter(id => this.directCategoryIds().has(id));
+        const descendantSkuIds = this.descendantProgProdIds(cat).filter(id => this.directProgProdIds().has(id));
+        const catIdsToRemove = [cat.progCatId, ...descendantCatIds];
+        await this.service.removeCategory(tpId, custId, programId, view.viewId, catIdsToRemove);
+        if (descendantSkuIds.length > 0) {
+          await this.service.removeSku(tpId, custId, programId, view.viewId, descendantSkuIds);
+        }
         this.directCategoryIds.update(set => {
           const next = new Set(set);
-          next.delete(cat.progCatId);
+          catIdsToRemove.forEach(id => next.delete(id));
+          return next;
+        });
+        this.directProgProdIds.update(set => {
+          const next = new Set(set);
+          descendantSkuIds.forEach(id => next.delete(id));
           return next;
         });
       } else {
-        await this.service.addCategory(tpId, custId, programId, view.viewId, [cat.progCatId]);
-        this.directCategoryIds.update(set => new Set(set).add(cat.progCatId));
+        // Check cascades down the same way: this category, every descendant
+        // category, and every SKU in the subtree all get included together.
+        const descendantCatIds = this.descendantCategoryIds(cat).filter(id => !this.directCategoryIds().has(id));
+        const descendantSkuIds = this.descendantProgProdIds(cat).filter(id => !this.directProgProdIds().has(id));
+        const catIdsToAdd = [cat.progCatId, ...descendantCatIds];
+        await this.service.addCategory(tpId, custId, programId, view.viewId, catIdsToAdd);
+        if (descendantSkuIds.length > 0) {
+          await this.service.addSku(tpId, custId, programId, view.viewId, descendantSkuIds);
+        }
+        this.directCategoryIds.update(set => {
+          const next = new Set(set);
+          catIdsToAdd.forEach(id => next.add(id));
+          return next;
+        });
+        this.directProgProdIds.update(set => {
+          const next = new Set(set);
+          descendantSkuIds.forEach(id => next.add(id));
+          return next;
+        });
         // Reveal what just got included — expand only this one level, not
         // the whole subtree (sub-assortments for a parent, product groups
         // for a leaf).
