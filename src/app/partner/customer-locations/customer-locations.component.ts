@@ -398,6 +398,16 @@ export class CustomerLocationsComponent implements OnInit {
     }
   }
 
+  canDelete(location: CustomerLocation): boolean {
+    return !this.hasChildrenSet().has(location.locId) && !(location.employeeCount ?? 0);
+  }
+
+  deleteTitle(location: CustomerLocation): string {
+    if (this.hasChildrenSet().has(location.locId)) return 'Cannot delete — has child locations';
+    if (location.employeeCount ?? 0) return 'Cannot delete — has employees assigned';
+    return 'Delete';
+  }
+
   statusBadge(status: string): string {
     return status === 'ACTIVE'
       ? 'badge bg-success-subtle text-success border border-success-subtle'

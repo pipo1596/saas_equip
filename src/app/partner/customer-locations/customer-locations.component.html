@@ -124,9 +124,9 @@
                 </button>
                 <button class="btn btn-sm btn-outline-secondary m-1 px-3" (click)="editLocation(loc)" title="Edit"><i class="bi bi-pencil"></i></button>
                 <button class="btn btn-sm m-1 px-3"
-                        [class]="hasChildrenSet().has(loc.locId) ? 'btn-outline-secondary' : 'btn-outline-danger'"
-                        [disabled]="hasChildrenSet().has(loc.locId)"
-                        (click)="openDeleteModal(loc)" title="Delete"><i class="bi bi-trash"></i></button>
+                        [class]="canDelete(loc) ? 'btn-outline-danger' : 'btn-outline-secondary'"
+                        [disabled]="!canDelete(loc)"
+                        (click)="openDeleteModal(loc)" [title]="deleteTitle(loc)"><i class="bi bi-trash"></i></button>
               </td>
             </tr>
           }
