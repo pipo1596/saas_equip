@@ -54,9 +54,8 @@ export class CustomerEmployeesService {
     return this.normalizeEmployee(data as unknown as CustomerEmployee);
   }
 
-  async create(tpId: number, custId: number, form: CustomerEmployeeForm): Promise<CustomerEmployee> {
-    const data = await this.post(tpId, { action: '*CREATE', tpId, custId, ...form });
-    return this.normalizeEmployee(data['employee'] as unknown as CustomerEmployee);
+  async create(tpId: number, custId: number, form: CustomerEmployeeForm): Promise<void> {
+    await this.post(tpId, { action: '*CREATE', tpId, custId, ...form });
   }
 
   async update(tpId: number, custId: number, empId: number, form: CustomerEmployeeForm): Promise<void> {
