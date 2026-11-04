@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import { repairCp1252MojibakeDeep, decodeWindows1252Text } from '../../shared/cp1252-mojibake.util';
 import { OrderGetResponse, OrderListFilters, OrdersListResponse, RefundRequest, RefundResponse } from './order.model';
+import { AdminApprovalQueueFilters, AdminApprovalQueueResponse, AdminDecisionRequest, AdminDecisionResponse } from './order-approval.model';
 
 // Carries the error envelope's `code` (BOP/NFD/AUT/ERR) alongside the
 // user-facing message, so callers can special-case AUT (send the admin back
@@ -33,6 +34,25 @@ export class OrdersService {
   async refund(request: RefundRequest): Promise<RefundResponse> {
     const data = await this.post({ action: '*REFUND', ...request });
     return data as unknown as RefundResponse;
+  }
+
+  // Every PENDING_APPROVAL order of one customer, whoever's step it is,
+  // soonest deadline first.
+  async approvalQueue(filters: AdminApprovalQueueFilters): Promise<AdminApprovalQueueResponse> {
+    const data = await this.post({ action: '*APPRQ', ...filters });
+    return data as unknown as AdminApprovalQueueResponse;
+  }
+
+  // An administrator decision bypasses the approval levels and is always
+  // final — never forwarded to another level.
+  async approve(request: AdminDecisionRequest): Promise<AdminDecisionResponse> {
+    const data = await this.post({ action: '*APPROVE', ...request });
+    return data as unknown as AdminDecisionResponse;
+  }
+
+  async reject(request: AdminDecisionRequest): Promise<AdminDecisionResponse> {
+    const data = await this.post({ action: '*REJECT', ...request });
+    return data as unknown as AdminDecisionResponse;
   }
 
   private async post(body: Record<string, unknown>): Promise<Record<string, unknown>> {

@@ -25,6 +25,7 @@ import { CustomerNoticesComponent } from '../customer-notices/customer-notices.c
 import { CustomerNoticeEditorComponent } from '../customer-notices/customer-notice-editor.component';
 import { OrdersComponent } from '../orders/orders.component';
 import { OrderDetailComponent } from '../orders/order-detail.component';
+import { OrderApprovalsComponent } from '../orders/order-approvals.component';
 
 // All routes are relative to partner/:id/customers
 export const CUSTOMERS_ROUTES: Routes = [
@@ -48,6 +49,7 @@ export const CUSTOMERS_ROUTES: Routes = [
   { path: ':customerId/notices/:noticeId/edit', component: CustomerNoticeEditorComponent },
   { path: ':customerId/orders', component: OrdersComponent },
   { path: ':customerId/orders/:orderId', component: OrderDetailComponent },
+  { path: ':customerId/approvals', component: OrderApprovalsComponent },
   { path: ':customerId/employees', component: CustomerEmployeesComponent },
   { path: ':customerId/employees/new', component: CustomerEmployeeFormComponent },
   { path: ':customerId/employees/:employeeId/edit', component: CustomerEmployeeFormComponent },

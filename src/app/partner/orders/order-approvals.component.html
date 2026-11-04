@@ -1,0 +1,203 @@
+<section class="page-shell">
+
+  <div class="page-shell-header">
+    <h1 class="page-title">Order Approvals</h1>
+    <p class="page-subtitle">Orders of <strong>{{ customerMode.activeCustomer()?.customerName }}</strong> waiting on an approval decision.</p>
+  </div>
+
+  @if (successMessage()) {
+    <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-patch-check-fill"></i><span>{{ successMessage() }}</span>
+      <button class="btn-close ms-auto" (click)="successMessage.set(null)"></button>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ error() }}</span>
+      <button class="btn-close ms-auto" (click)="error.set(null)"></button>
+    </div>
+  }
+
+  <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
+    <div class="input-group" style="max-width: 280px;">
+      <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+      <input type="text" class="form-control border-start-0 ps-0" placeholder="Order #, name, email…" maxlength="100"
+             [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+    </div>
+
+    <div>
+      <label class="form-label small text-muted mb-1">Location</label>
+      <select class="form-select form-select-sm" [ngModel]="locationId()" (ngModelChange)="onLocationFilterChange($event)">
+        <option [ngValue]="null">All locations</option>
+        @for (loc of locations(); track loc.locId) {
+          <option [ngValue]="loc.locId">{{ loc.locName }}</option>
+        }
+      </select>
+    </div>
+
+    <div>
+      <label class="form-label small text-muted mb-1">Employee</label>
+      <select class="form-select form-select-sm" [ngModel]="employeeId()" (ngModelChange)="onEmployeeFilterChange($event)">
+        <option [ngValue]="null">All employees</option>
+        @for (emp of employees(); track emp.empId) {
+          <option [ngValue]="emp.empId">{{ employeeName(emp) }}</option>
+        }
+      </select>
+    </div>
+
+    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
+      <i class="bi bi-x-lg me-1"></i>Clear filters
+    </button>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 table-stacked">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Placed by</th>
+          <th>Location</th>
+          <th>Total</th>
+          <th>Allotment used</th>
+          <th>Waiting on</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (loading()) {
+          <tr><td colspan="7" class="text-center py-4 text-muted">
+            <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Loading…
+          </td></tr>
+        } @else if (!listResponse() || listResponse()!.data.length === 0) {
+          <tr><td colspan="7" class="text-center py-4 text-muted">
+            <i class="bi bi-check2-circle me-2"></i>Nothing waiting on approval right now.
+          </td></tr>
+        } @else {
+          @for (row of listResponse()!.data; track row.orderId) {
+            <tr style="cursor:pointer;" (click)="openOrder(row)">
+              <td data-label="Order">
+                <div class="fw-semibold">{{ row.orderNumber }}</div>
+                <div class="text-muted small">Placed {{ formatDate(row.placedTs) }}</div>
+                @if (row.overdue === 'Y') {
+                  <span class="badge bg-danger-subtle text-danger border border-danger-subtle mt-1">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Overdue
+                  </span>
+                }
+              </td>
+              <td data-label="Placed by" class="small">
+                <div>{{ placedByLabel(row) }}</div>
+                <div class="text-muted">{{ row.placedBy.employeeNumber }}</div>
+              </td>
+              <td data-label="Location" class="small">{{ row.location.name || '—' }}</td>
+              <td data-label="Total" class="small">
+                <div>{{ row.orderTotal | currency }}</div>
+                <div class="text-muted">{{ row.itemCount }} item{{ row.itemCount === 1 ? '' : 's' }} · {{ row.lineCount }} line{{ row.lineCount === 1 ? '' : 's' }}</div>
+              </td>
+              <td data-label="Allotment used" class="small">{{ amountSummary(row) }}</td>
+              <td data-label="Waiting on" class="small">
+                <div>{{ waitingOnLabel(row) }}</div>
+                @if (row.approvalStep.dueTs) {
+                  <div class="text-muted">Decide by {{ formatDate(row.approvalStep.dueTs) }}</div>
+                }
+              </td>
+              <td class="text-end" data-label="Actions" (click)="$event.stopPropagation()">
+                <button class="btn btn-sm btn-outline-success me-1" (click)="openDecisionModal(row, 'APPROVE')" title="Approve">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="openDecisionModal(row, 'REJECT')" title="Reject">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (!loading() && total() > 0) {
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+      <p class="small text-muted mb-0">Showing {{ startRecord() }}–{{ endRecord() }} of {{ total() }} orders</p>
+      @if (totalPages() > 1) {
+        <div class="d-flex align-items-center gap-1">
+          @if (page() > 1) {
+            <button class="btn btn-sm btn-outline-secondary" (click)="goToPage(1)"><i class="bi bi-chevron-double-left"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" (click)="goToPage(page() - 1)"><i class="bi bi-chevron-left"></i></button>
+          }
+          @for (p of pageWindow(); track p) {
+            <button class="btn btn-sm" [class.btn-dark]="p === page()" [class.btn-outline-secondary]="p !== page()" (click)="goToPage(p)">{{ p }}</button>
+          }
+          @if (page() < totalPages()) {
+            <button class="btn btn-sm btn-outline-secondary" (click)="goToPage(page() + 1)"><i class="bi bi-chevron-right"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" (click)="goToPage(totalPages())"><i class="bi bi-chevron-double-right"></i></button>
+          }
+        </div>
+      }
+    </div>
+  }
+
+</section>
+
+<!-- Approve / Reject Modal -->
+@if (showDecisionModal()) {
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">
+            @if (decisionAction() === 'APPROVE') {
+              <i class="bi bi-check-circle me-2 text-success"></i>Approve Order
+            } @else {
+              <i class="bi bi-x-circle me-2 text-danger"></i>Reject Order
+            }
+          </h5>
+          <button class="btn-close" (click)="closeDecisionModal()" [disabled]="decisionSaving()"></button>
+        </div>
+        <div class="modal-body pt-2">
+          @if (decisionTarget(); as t) {
+            <p class="text-muted small">
+              @if (decisionAction() === 'APPROVE') {
+                Order <strong>{{ t.orderNumber }}</strong> will move straight to Processing. This bypasses any
+                remaining approval levels and can't be undone.
+              } @else {
+                Order <strong>{{ t.orderNumber }}</strong> will be rejected and its allotment refunded. This can't be undone.
+              }
+            </p>
+          }
+
+          <label class="form-label small fw-semibold text-uppercase text-muted">
+            {{ decisionAction() === 'APPROVE' ? 'Approval note' : 'Rejection reason' }}
+          </label>
+          <textarea class="form-control" rows="3" maxlength="500"
+                    [class.is-invalid]="decisionSubmitted() && !decisionNotes().trim()"
+                    [ngModel]="decisionNotes()" (ngModelChange)="decisionNotes.set($event)"
+                    placeholder="Required — shown on the order's approval timeline"></textarea>
+          <div class="invalid-feedback">A note is required.</div>
+
+          @if (decisionError()) {
+            <div class="alert alert-danger d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
+              <i class="bi bi-exclamation-triangle-fill"></i><span>{{ decisionError() }}</span>
+            </div>
+          }
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary" (click)="closeDecisionModal()" [disabled]="decisionSaving()">Cancel</button>
+          <button type="button"
+                  [class]="decisionAction() === 'APPROVE' ? 'btn btn-success' : 'btn btn-danger'"
+                  [disabled]="decisionSaving() || !decisionNotes().trim()"
+                  (click)="confirmDecision()">
+            @if (decisionSaving()) {
+              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving…
+            } @else if (decisionAction() === 'APPROVE') {
+              <i class="bi bi-check-lg me-1"></i>Approve order
+            } @else {
+              <i class="bi bi-x-lg me-1"></i>Reject order
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

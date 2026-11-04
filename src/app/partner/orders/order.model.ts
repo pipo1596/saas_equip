@@ -171,6 +171,19 @@ export interface OrderShipment {
   [key: string]: unknown;
 }
 
+// One entry per approval step the order has gone through. actedAs is
+// 'OVERRIDE' for both a customer's override role and an administrator
+// decision — actedEmployeeId null with actedBy starting 'ADMIN:' is how you
+// tell the two apart on this screen.
+export interface OrderApprovalEntry {
+  status: 'APPROVED' | 'REJECTED' | string;
+  actedAs?: string | null;
+  actedBy?: string | null;
+  actedEmployeeId?: number | null;
+  notes?: string | null;
+  [key: string]: unknown;
+}
+
 export interface OrderDetail {
   orderId: number;
   orderNumber: string;
@@ -184,7 +197,7 @@ export interface OrderDetail {
   paidFrom: OrderPaidFromEntry[];
   shipments: OrderShipment[];
   refunds: OrderRefundEntry[];
-  approvals: unknown[];
+  approvals: OrderApprovalEntry[];
   history: unknown[];
   // Always "N" for admins — Approve/Reject must stay hidden here even if
   // the portal's shared order-detail rendering would otherwise show them.

@@ -175,6 +175,15 @@
 
           <li class="nav-item">
             <a class="sidebar-nav-link"
+               [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'approvals']"
+               routerLinkActive="active">
+              <i class="bi bi-patch-check nav-icon"></i>
+              <span>Approvals</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="sidebar-nav-link"
                [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'addresses']"
                routerLinkActive="active">
               <i class="bi bi-geo-alt nav-icon"></i>

@@ -5,13 +5,15 @@ import { PartnerModeService } from '../partner-mode.service';
 import { CustomerModeService } from '../partner-customers/customer-mode.service';
 import { AuthService } from '../../auth/auth.service';
 import { OrdersService, OrderApiError } from './orders.service';
-import { OrderDetailContext, OrderDetail, OrderLine, RefundLineInput } from './order.model';
+import { OrderDetailContext, OrderDetail, OrderLine, OrderApprovalEntry, RefundLineInput } from './order.model';
 
 interface RefundLineRow {
   line: OrderLine;
   refundableQty: number;
   qty: number;
 }
+
+type DecisionAction = 'APPROVE' | 'REJECT';
 
 @Component({
   selector: 'app-order-detail',
@@ -40,6 +42,14 @@ export class OrderDetailComponent implements OnInit {
   readonly refundSaving = signal(false);
   readonly refundError = signal<string | null>(null);
   readonly refundSuccessMessage = signal<string | null>(null);
+
+  readonly showDecisionModal = signal(false);
+  readonly decisionAction = signal<DecisionAction>('APPROVE');
+  readonly decisionNotes = signal('');
+  readonly decisionSubmitted = signal(false);
+  readonly decisionSaving = signal(false);
+  readonly decisionError = signal<string | null>(null);
+  readonly decisionSuccessMessage = signal<string | null>(null);
 
   protected get tpId(): number | undefined {
     return this.partnerMode.activePartner()?.tpId;
@@ -83,8 +93,16 @@ export class OrderDetailComponent implements OnInit {
     }
   }
 
+  private get backSegment(): 'approvals' | 'orders' {
+    return this.route.snapshot.queryParamMap.get('from') === 'approvals' ? 'approvals' : 'orders';
+  }
+
+  backLabel(): string {
+    return this.backSegment === 'approvals' ? 'approvals' : 'orders';
+  }
+
   back(): void {
-    this.router.navigate(['/partner', this.tpId, 'customers', this.custId, 'orders']);
+    this.router.navigate(['/partner', this.tpId, 'customers', this.custId, this.backSegment]);
   }
 
   canRefund(): boolean {
@@ -152,6 +170,60 @@ export class OrderDetailComponent implements OnInit {
       this.refundError.set(err instanceof Error ? err.message : 'Failed to process refund.');
     } finally {
       this.refundSaving.set(false);
+    }
+  }
+
+  // ── Approve / Reject ────────────────────────────────────────────────────
+
+  canDecide(): boolean {
+    return this.order()?.status === 'PENDING_APPROVAL';
+  }
+
+  isAdminDecision(entry: OrderApprovalEntry): boolean {
+    return entry.actedEmployeeId == null && !!entry.actedBy?.startsWith('ADMIN:');
+  }
+
+  openDecisionModal(action: DecisionAction): void {
+    if (!this.order()) return;
+    this.decisionAction.set(action);
+    this.decisionNotes.set('');
+    this.decisionSubmitted.set(false);
+    this.decisionError.set(null);
+    this.showDecisionModal.set(true);
+  }
+
+  closeDecisionModal(): void {
+    if (this.decisionSaving()) return;
+    this.showDecisionModal.set(false);
+  }
+
+  async confirmDecision(): Promise<void> {
+    const o = this.order();
+    this.decisionSubmitted.set(true);
+    if (!o) return;
+    const notes = this.decisionNotes().trim();
+    if (!notes) return;
+
+    this.decisionSaving.set(true);
+    this.decisionError.set(null);
+    try {
+      const request = { orderId: o.orderId, custId: this.custId ?? undefined, notes };
+      const result = this.decisionAction() === 'APPROVE'
+        ? await this.service.approve(request)
+        : await this.service.reject(request);
+      this.showDecisionModal.set(false);
+      this.decisionSuccessMessage.set(result.message);
+      await this.loadOrder();
+    } catch (err) {
+      if (err instanceof OrderApiError && err.code === 'AUT') {
+        this.auth.logout();
+        this.router.navigate(['/login']);
+        return;
+      }
+      this.decisionError.set(err instanceof Error ? err.message : 'Failed to record the decision.');
+      await this.loadOrder();
+    } finally {
+      this.decisionSaving.set(false);
     }
   }
 }
