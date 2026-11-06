@@ -39,5 +39,6 @@ export const environment = {
     customerApprovalLevels: 'APITPCAPL',
     customerNotices: 'APITPCNTC',
     orders: 'APITPEORD',
+    customerEmailContent: 'APITPCEML',
   },
 };

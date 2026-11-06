@@ -272,6 +272,15 @@
             </a>
           </li>
 
+          <li class="nav-item">
+            <a class="sidebar-nav-link"
+               [routerLink]="['/partner', partnerMode.activePartner()?.tpId, 'customers', customerMode.activeCustomer()?.custId, 'email-content']"
+               routerLinkActive="active">
+              <i class="bi bi-envelope-paper nav-icon"></i>
+              <span>Email Content</span>
+            </a>
+          </li>
+
         </ul>
 
         <button class="partner-settings-back-btn mt-2" type="button" (click)="exitCustomerMode()">

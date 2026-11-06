@@ -1,0 +1,214 @@
+<section class="page-shell">
+
+  <div class="page-shell-header">
+    <h1 class="page-title">Email Content</h1>
+    <p class="page-subtitle">Custom HTML for <strong>{{ customerMode.activeCustomer()?.customerName }}</strong>'s order emails.</p>
+  </div>
+
+  @if (loadError()) {
+    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+      <i class="bi bi-exclamation-triangle-fill"></i><span>{{ loadError() }}</span>
+      <button class="btn-close ms-auto" (click)="loadError.set(null)"></button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="text-center py-5 text-muted">
+      <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+      Loading…
+    </div>
+  } @else {
+
+    <ul class="nav nav-tabs mb-3 flex-wrap">
+      @for (t of visibleTypes(); track t.emailType) {
+        <li class="nav-item">
+          <button type="button" class="nav-link" [class.active]="t.emailType === activeType()" (click)="selectType(t.emailType)">
+            {{ t.label }}
+          </button>
+        </li>
+      }
+    </ul>
+
+    @if (activeTypeData(); as type) {
+
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <div class="small" [ngClass]="activeEmailTotal() > limits().emailMax ? 'text-danger fw-semibold' : 'text-muted'">
+          {{ activeEmailTotal() | number }} / {{ limits().emailMax | number }} characters of custom content for this email (after fallback)
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-dark" [disabled]="!canSaveAll()" (click)="saveAllDirty()">
+            @if (savingAll()) {
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving…
+            } @else {
+              <i class="bi bi-check-lg me-1"></i>Save all
+            }
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-dark" [disabled]="!canPreview()"
+                  [title]="hasUnsavedChanges() ? 'Save your changes first' : 'Preview this email'"
+                  (click)="openPreview()">
+            <i class="bi bi-eye me-1"></i>Preview
+          </button>
+        </div>
+      </div>
+
+      @if (saveAllError()) {
+        <div class="alert alert-danger d-flex align-items-center gap-2 mb-3 py-2">
+          <i class="bi bi-exclamation-triangle-fill"></i><span class="small">{{ saveAllError() }}</span>
+          <button class="btn-close ms-auto" (click)="saveAllError.set(null)"></button>
+        </div>
+      }
+
+      <div class="d-flex flex-column gap-3">
+        @for (slot of type.slots; track slot.slotCode) {
+          @if (slotEdit(slot.slotCode); as edit) {
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2 mb-2">
+                  <div>
+                    <h6 class="card-title fw-semibold mb-0">{{ slot.label }}</h6>
+                    <p class="text-muted small mb-0">{{ slot.description }}</p>
+                  </div>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" [id]="'active_' + slot.slotCode"
+                           [checked]="edit.status === 'ACTIVE'" (change)="toggleSlotActive(slot.slotCode)" />
+                    <label class="form-check-label small" [for]="'active_' + slot.slotCode">Active</label>
+                  </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <label class="form-label fw-medium mb-0 small">Content</label>
+                  <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size:.75rem;" (click)="toggleSlotHtmlSource(slot.slotCode)">
+                    <i class="bi bi-code-slash me-1"></i>{{ edit.htmlSourceMode ? 'Editor' : 'HTML' }}
+                  </button>
+                </div>
+                @if (edit.htmlSourceMode) {
+                  <textarea class="form-control font-monospace" style="height:150px; font-size:.78rem; white-space:pre;"
+                            [ngModel]="edit.content" (ngModelChange)="onSlotSourceChange(slot.slotCode, $event)"></textarea>
+                } @else {
+                  <quill-editor
+                    [ngModel]="edit.content"
+                    [modules]="editorModules"
+                    [styles]="{ height: '150px' }"
+                    placeholder="HTML content for this slot…"
+                    (onContentChanged)="onSlotContentChanged(slot.slotCode, $event)"
+                  ></quill-editor>
+                }
+                <div class="text-end small mt-1" [ngClass]="edit.charCount > limits().slotMax ? 'text-danger' : 'text-muted'">
+                  {{ edit.charCount | number }} / {{ limits().slotMax | number }}
+                </div>
+
+                @if (showsFallback(slot)) {
+                  <div class="small text-muted mt-1">
+                    <i class="bi bi-arrow-return-right me-1"></i>
+                    @if (slot.fallbackFrom === 'APPR_REQUEST') {
+                      <a href="javascript:void(0)" (click)="selectType(slot.fallbackFrom)">{{ fallbackLabel(slot) }}</a>
+                    } @else {
+                      {{ fallbackLabel(slot) }}
+                    }
+                  </div>
+                }
+
+                @if (slot.updatedBy) {
+                  <div class="small text-muted mt-1">Last changed by {{ slot.updatedBy }} on {{ slot.updatedTs }}</div>
+                }
+
+                @if (edit.error) {
+                  <div class="alert alert-danger d-flex align-items-center gap-2 mt-2 mb-0 py-2">
+                    <i class="bi bi-exclamation-triangle-fill"></i><span class="small">{{ edit.error }}</span>
+                  </div>
+                }
+
+                <div class="d-flex gap-2 mt-2">
+                  <button type="button" class="btn btn-sm btn-dark" [disabled]="!edit.dirty || edit.saving || edit.clearing || edit.charCount > limits().slotMax"
+                          (click)="saveSlot(slot.slotCode)">
+                    @if (edit.saving) {
+                      <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving…
+                    } @else {
+                      <i class="bi bi-check-lg me-1"></i>Save
+                    }
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="edit.saving || edit.clearing || !slot.contentId"
+                          (click)="clearSlot(slot.slotCode)">
+                    @if (edit.clearing) {
+                      <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Clearing…
+                    } @else {
+                      <i class="bi bi-x-lg me-1"></i>Clear
+                    }
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      @if (saveAllError()) {
+        <div class="alert alert-danger d-flex align-items-center gap-2 mt-3 py-2">
+          <i class="bi bi-exclamation-triangle-fill"></i><span class="small">{{ saveAllError() }}</span>
+          <button class="btn-close ms-auto" (click)="saveAllError.set(null)"></button>
+        </div>
+      }
+
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="button" class="btn btn-sm btn-dark" [disabled]="!canSaveAll()" (click)="saveAllDirty()">
+          @if (savingAll()) {
+            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Saving…
+          } @else {
+            <i class="bi bi-check-lg me-1"></i>Save all
+          }
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-dark" [disabled]="!canPreview()"
+                [title]="hasUnsavedChanges() ? 'Save your changes first' : 'Preview this email'"
+                (click)="openPreview()">
+          <i class="bi bi-eye me-1"></i>Preview
+        </button>
+      </div>
+
+    }
+
+  }
+
+</section>
+
+<!-- Preview Modal -->
+@if (showPreviewModal()) {
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header border-0 pb-0">
+          <h5 class="modal-title">
+            <i class="bi bi-envelope-open me-2 text-muted"></i>Preview — {{ typeLabel(activeType()) }}
+          </h5>
+          <button class="btn-close" (click)="closePreview()"></button>
+        </div>
+        <div class="modal-body pt-2">
+          @if (previewLoading()) {
+            <div class="text-center py-5 text-muted">
+              <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
+              Building preview…
+            </div>
+          } @else if (previewError()) {
+            <div class="alert alert-danger d-flex align-items-center gap-2 mb-0">
+              <i class="bi bi-exclamation-triangle-fill"></i><span>{{ previewError() }}</span>
+            </div>
+          } @else {
+            @if (previewOrderNumber()) {
+              <p class="text-muted small mb-2">Previewing with order {{ previewOrderNumber() }}</p>
+            }
+            @if (previewNote()) {
+              <div class="alert alert-info small py-2 mb-2">{{ previewNote() }}</div>
+            }
+            <div class="d-flex justify-content-center">
+              <iframe sandbox [srcdoc]="previewHtml()" style="width:640px; max-width:100%; height:600px; border:1px solid #dee2e6; border-radius:.375rem;"></iframe>
+            </div>
+          }
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary" (click)="closePreview()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
